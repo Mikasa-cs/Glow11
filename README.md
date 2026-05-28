@@ -127,7 +127,7 @@ Open `src/data/products.js` and add to the `ALL_PRODUCTS` array:
   type:    "Serum",          // Serum | Toner | Moisturizer | Sunscreen | Face Wash
   effects: "Brightening, Anti-Aging",
   skin:    "Oily, Combination",
-  price:   "Rp 150.000",
+  price:   "Rs  150.000",
   tier:    "Mid-Range",      // Budget | Mid-Range | Premium | Luxury
 },
 ```

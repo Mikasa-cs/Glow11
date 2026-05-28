@@ -17,6 +17,11 @@ export const C = {
   indigo: "#818cf8",
 };
 
+export const fmtRp = (n) => {
+  const num = Math.round(Number(n) || 0);
+  return "Rp " + num.toLocaleString("id-ID");
+};
+
 export const COLORS = [
   C.accent,
   C.accent2,
@@ -29,11 +34,12 @@ export const COLORS = [
 ];
 
 // Formatters
-export const fmtRp = (n) =>
+export const fmtRs= (n) =>
   n >= 1000000
-    ? `Rp ${(n / 1000000).toFixed(1)}M`
+    ? `Rs${(n / 1000000).toFixed(1)}M`
     : n >= 1000
-    ? `Rp ${(n / 1000).toFixed(0)}K`
-    : `Rp ${n}`;
+    ? `Rs${(n / 1000).toFixed(0)}K`
+    : `Rs${n}`;
 
-export const fmtM = (n) => `Rp ${(n / 1000000).toFixed(1)}M`;
+export const fmtM = (n) => `Rs${(n / 1000000).toFixed(1)}M`;
+ 

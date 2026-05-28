@@ -27,10 +27,10 @@ def load_data(csv_path: str = "Skin_Care.csv") -> pd.DataFrame:
     # Strip whitespace from column names
     df.columns = df.columns.str.strip()
 
-    # Clean price → numeric (remove "Rp " and ".")
+    # Clean price → numeric (remove "Rs   " and ".")
     df["price_num"] = (
         df["price"]
-        .str.replace("Rp ", "", regex=False)
+        .str.replace("Rs   ", "", regex=False)
         .str.replace(".", "", regex=False)
         .str.replace(",", "", regex=False)
         .pipe(pd.to_numeric, errors="coerce")

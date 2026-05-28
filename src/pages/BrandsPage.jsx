@@ -4,7 +4,7 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, Legend,
 } from "recharts";
 import { DATA } from "../data/dashboardData";
-import { C, COLORS, fmtRp } from "../theme/colors";
+import { C, COLORS, fmtRs} from "../theme/colors";
 import { Card, SectionTitle, TT } from "../components/Shared";
 
 export default function BrandsPage() {

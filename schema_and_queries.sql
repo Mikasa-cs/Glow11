@@ -243,3 +243,40 @@ WHERE
         SELECT product_id FROM offers
         WHERE offer_type = 'BUY_2_GET_3' AND is_active = 1
     );
+
+-- ────────────────────────────────────────────────────────────────
+-- ORDERS TABLE (user orders stored per user)
+-- ────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS orders (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id         TEXT UNIQUE NOT NULL,
+    user_email       TEXT NOT NULL,
+    user_name        TEXT,
+    items            TEXT,          -- JSON array of ordered items
+    subtotal         REAL,
+    shipping         REAL,
+    tax              REAL,
+    total            REAL,
+    payment_method   TEXT,
+    shipping_method  TEXT,
+    address          TEXT,
+    created_at       TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_email ON orders(user_email);
+CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
+
+-- Get all orders for a specific user
+SELECT
+    o.order_id,
+    o.user_name,
+    o.user_email,
+    o.total,
+    o.payment_method,
+    o.shipping_method,
+    o.address,
+    o.created_at
+FROM orders o
+WHERE o.user_email = :user_email
+ORDER BY o.created_at DESC;

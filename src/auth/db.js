@@ -1,15 +1,12 @@
 // src/auth/db.js
-// ✅ NEW: Backend-based authentication (calls FastAPI server)
-// Users are now stored in backend SQLite (users.db)
-// Persists across devices and sessions
+// Backend-based authentication — calls FastAPI at localhost:8000
 
-const BACKEND_URL = "http://localhost:8000";
+const BACKEND_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
 // --------------------------------------------------------------------------
-// Initialise database (now backend)
+// Health check / init
 // --------------------------------------------------------------------------
 export async function initDB() {
-  // Check if backend is running
   try {
     const resp = await fetch(`${BACKEND_URL}/health`);
     if (!resp.ok) throw new Error("Backend health check failed");
@@ -22,7 +19,7 @@ export async function initDB() {
 }
 
 // --------------------------------------------------------------------------
-// Login via backend
+// Login
 // --------------------------------------------------------------------------
 export async function dbLogin(email, password) {
   try {
@@ -31,21 +28,12 @@ export async function dbLogin(email, password) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: email.trim(), password }),
     });
-
     if (!resp.ok) {
-      try {
-        const err = await resp.json();
-        return { ok: false, message: err.detail || "Login failed" };
-      } catch {
-        return { ok: false, message: `Login failed (${resp.status} ${resp.statusText})` };
-      }
+      const err = await resp.json().catch(() => ({}));
+      return { ok: false, message: err.detail || `Login failed (${resp.status})` };
     }
-
     const data = await resp.json();
-    return {
-      ok: true,
-      user: data.user,
-    };
+    return { ok: true, user: data.user };
   } catch (e) {
     console.error("dbLogin error:", e);
     return { ok: false, message: "Network error: " + e.message };
@@ -53,29 +41,19 @@ export async function dbLogin(email, password) {
 }
 
 // --------------------------------------------------------------------------
-// Register via backend
+// Register
 // --------------------------------------------------------------------------
 export async function dbRegister(email, password, name) {
   try {
     const resp = await fetch(`${BACKEND_URL}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: email.trim(),
-        password,
-        name: name.trim(),
-      }),
+      body: JSON.stringify({ email: email.trim(), password, name: name.trim() }),
     });
-
     if (!resp.ok) {
-      try {
-        const err = await resp.json();
-        return { ok: false, message: err.detail || "Registration failed" };
-      } catch {
-        return { ok: false, message: `Registration failed (${resp.status} ${resp.statusText})` };
-      }
+      const err = await resp.json().catch(() => ({}));
+      return { ok: false, message: err.detail || `Registration failed (${resp.status})` };
     }
-
     return { ok: true };
   } catch (e) {
     console.error("dbRegister error:", e);
@@ -84,7 +62,7 @@ export async function dbRegister(email, password, name) {
 }
 
 // --------------------------------------------------------------------------
-// Admin registration via backend
+// Admin registration
 // --------------------------------------------------------------------------
 export async function dbAdminRegister(email, password, name, adminEmail, adminPassword) {
   try {
@@ -99,16 +77,10 @@ export async function dbAdminRegister(email, password, name, adminEmail, adminPa
         admin_password: adminPassword,
       }),
     });
-
     if (!resp.ok) {
-      try {
-        const err = await resp.json();
-        return { ok: false, message: err.detail || "Admin registration failed" };
-      } catch {
-        return { ok: false, message: `Admin registration failed (${resp.status} ${resp.statusText})` };
-      }
+      const err = await resp.json().catch(() => ({}));
+      return { ok: false, message: err.detail || `Admin registration failed (${resp.status})` };
     }
-
     return { ok: true };
   } catch (e) {
     console.error("dbAdminRegister error:", e);
@@ -117,20 +89,71 @@ export async function dbAdminRegister(email, password, name, adminEmail, adminPa
 }
 
 // --------------------------------------------------------------------------
-// Admin helpers (mock data for now - could be expanded)
+// Admin: get all users
 // --------------------------------------------------------------------------
-
-export function dbGetAllUsers() {
-  // Would need a new backend endpoint to fetch all users
-  return [];
+export async function dbGetAllUsers(adminEmail, adminPassword) {
+  try {
+    const params = new URLSearchParams({
+      admin_email: adminEmail,
+      admin_password: adminPassword,
+    });
+    const resp = await fetch(`${BACKEND_URL}/api/admin/users?${params}`);
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      return { ok: false, message: err.detail || "Failed to fetch users", users: [] };
+    }
+    const data = await resp.json();
+    return { ok: true, users: data.users };
+  } catch (e) {
+    console.error("dbGetAllUsers error:", e);
+    return { ok: false, message: "Network error: " + e.message, users: [] };
+  }
 }
 
-export function dbSetRole(userId, newRole) {
-  // Would need a new backend endpoint to update user roles
-  return { ok: false, message: "Not implemented" };
+// --------------------------------------------------------------------------
+// Admin: get login logs
+// --------------------------------------------------------------------------
+export async function dbGetLoginLogs(adminEmail, adminPassword) {
+  try {
+    const params = new URLSearchParams({
+      admin_email: adminEmail,
+      admin_password: adminPassword,
+    });
+    const resp = await fetch(`${BACKEND_URL}/api/admin/login-logs?${params}`);
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      return { ok: false, message: err.detail || "Failed to fetch logs", logs: [] };
+    }
+    const data = await resp.json();
+    return { ok: true, logs: data.logs };
+  } catch (e) {
+    console.error("dbGetLoginLogs error:", e);
+    return { ok: false, message: "Network error: " + e.message, logs: [] };
+  }
 }
 
-export function dbGetLoginLogs() {
-  // Would need a new backend endpoint to fetch login logs
-  return [];
+// --------------------------------------------------------------------------
+// Admin: set user role
+// --------------------------------------------------------------------------
+export async function dbSetRole(userId, newRole, adminEmail, adminPassword) {
+  try {
+    const resp = await fetch(`${BACKEND_URL}/api/admin/set-role`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: userId,
+        new_role: newRole,
+        admin_email: adminEmail,
+        admin_password: adminPassword,
+      }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      return { ok: false, message: err.detail || "Failed to update role" };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error("dbSetRole error:", e);
+    return { ok: false, message: "Network error: " + e.message };
+  }
 }

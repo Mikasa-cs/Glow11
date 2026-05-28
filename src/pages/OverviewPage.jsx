@@ -1,7 +1,8 @@
 // src/pages/OverviewPage.jsx
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { DATA } from "../data/dashboardData";
-import { C, COLORS, fmtRp } from "../theme/colors";
+import { C, COLORS } from "../theme/colors";
+const fmtRp = (n) => "Rp " + Math.round(Number(n) || 0).toLocaleString("id-ID");
 import { Card, SectionTitle, StatCard, TT } from "../components/Shared";
 
 export default function OverviewPage() {

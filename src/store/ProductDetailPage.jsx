@@ -33,7 +33,7 @@ function StarRating({ rating }) {
   return <span>{stars}</span>;
 }
 
-export default function ProductDetailPage({ product, onBack, onAddToCart }) {
+export default function ProductDetailPage({ product, onBack, onAddToCart, onBuyNow }) {
   const [qty, setQty]       = useState(1);
   const [imgErr, setImgErr] = useState(false);
   const [addedMsg, setAddedMsg] = useState("");
@@ -57,8 +57,9 @@ export default function ProductDetailPage({ product, onBack, onAddToCart }) {
   };
 
   const handleBuyNow = () => {
-    onAddToCart({ ...product, name, qty });
-    alert("Checkout coming soon! Item added to cart.");
+    const item = { ...product, name, qty };
+    onAddToCart(item);
+    onBuyNow?.(item);
   };
 
   const TIER_COLOR = { Budget: C.accent4, "Mid-Range": "#86efac", Premium: C.accent2, Luxury: C.warning };

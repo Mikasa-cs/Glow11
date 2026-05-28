@@ -23,7 +23,7 @@ export default function OpportunityPage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: "1.5rem" }}>
         <StatCard icon="🚀" value="8"             label="Opportunities Found"  color={C.accent2} />
-        <StatCard icon="💎" value="Rp 269M"       label="Total Potential"      color={C.accent4} />
+        <StatCard icon="💎" value="Rs269"       label="Total Potential"      color={C.accent4} />
         <StatCard icon="⚡" value="4 High"        label="High Priority Items"  color={C.warning} />
         <StatCard icon="🎯" value="Male Skincare" label="Biggest Gap (92%)"    color={C.accent}  />
       </div>

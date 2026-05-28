@@ -26,12 +26,12 @@ const STAGE_DETAILS = {
   Intent: {
     desc: "40% drop-off — significant hesitation before purchase.",
     actions: ["Add to cart", "Check delivery", "Look for promos"],
-    tips: "Budget tier (426 products) converts fastest — promote Rp 50-100K range.",
+    tips: "Budget tier (426 products) converts fastest — promote Rs50-100K range.",
   },
   Purchase: {
     desc: "38% drop — final conversion barrier.",
     actions: ["Complete checkout", "Choose payment", "Confirm order"],
-    tips: "WARDAH (Rp 51K avg) & AZARINE (Rp 53K avg) drive budget conversions.",
+    tips: "WARDAH (Rs51 avg) & AZARINE (Rs53 avg) drive budget conversions.",
   },
   Loyalty: {
     desc: "39% churn post-purchase. Retention is the key growth lever.",

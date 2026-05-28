@@ -21,7 +21,7 @@ const SYSTEM_PROMPT = `You are the GlowIQ Dashboard AI Assistant. You ONLY answe
 
 DASHBOARD DATA SUMMARY:
 - Total Products: 1,224 | Brands: 187 | Types: 5 (Serum 307, Toner 255, Moisturizer 248, Sunscreen 212, Face Wash 202)
-- Avg Price: Rp 226,183 | Price Range: Rp 9,000 to Rp 2,850,000
+- Avg Price: Rs226,183 | Price Range: Rs9,000 to Rs2,850,000
 
 GENDER SEGMENT:
 - Female: 747 products (61%), Unisex: 388 (32%), Male: 89 (7%)
@@ -39,15 +39,15 @@ CUSTOMER JOURNEY:
 - Female segment dominates all stages, Male drops off fastest
 
 REVENUE SIMULATOR:
-- Base revenue: Rp 276.5M | Highest: Serum (Rp 89.2M, +12% growth)
+- Base revenue: Rs276.5M | Highest: Serum (Rs89.2M, +12% growth)
 - Sunscreen fastest growing (+22% projected)
-- Q4 (Nov-Dec) projected highest: Rp 38-42M/month
+- Q4 (Nov-Dec) projected highest: Rs38-42M/month
 
 OPPORTUNITY FINDER:
-- Top gaps: Male Skincare (92% gap, Rp 45M potential), K-Beauty Premium (82%), Eco/Natural (87%), Luxury+Oily (78%), Sensitive+Moisturizer (71%)
+- Top gaps: Male Skincare (92% gap, Rs45M potential), K-Beauty Premium (82%), Eco/Natural (87%), Luxury+Oily (78%), Sensitive+Moisturizer (71%)
 - Easiest wins: Budget Serum & Sensitive+Moisturizer & Combination Toner (Low difficulty + High priority)
 
-TOP BRANDS: SOMETHINC (82 products, Rp 118K avg), WARDAH (70, Rp 51K), INNISFREE (49, Rp 299K), AVOSKIN (41, Rp 154K), ERHA (41, Rp 118K)
+TOP BRANDS: SOMETHINC (82 products, Rs118K avg), WARDAH (70, Rs51K), INNISFREE (49, Rs299K), AVOSKIN (41, Rs154K), ERHA (41, Rs118K)
 
 SKIN TYPES: Oily (839 products most covered), Dry (730), Normal (538), Sensitive (500), Combination (441)
 TOP EFFECTS: Brightening (507), Anti-Aging (490), Pore-Care (379), Moisturizing (307), Acne-Free (242)

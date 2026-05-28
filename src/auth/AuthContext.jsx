@@ -1,7 +1,3 @@
-// src/auth/AuthContext.jsx
-// Auth context backed by FastAPI backend (server.py).
-// Users are stored in backend SQLite database (users.db).
-
 import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { initDB, dbLogin } from "./db";
 
