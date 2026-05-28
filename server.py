@@ -1,4 +1,11 @@
-
+from fastapi.responses import StreamingResponse
+import io
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -6,6 +13,7 @@ import uvicorn
 import os
 import sqlite3
 import json
+import pandas as pd
 from datetime import datetime, timezone, timedelta
 
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -17,6 +25,7 @@ try:
         build_recommendation_payload,
         record_click,
         init_click_db,
+        get_filtered_recommendations,
     )
 except ImportError as e:
     raise RuntimeError(
@@ -25,8 +34,21 @@ except ImportError as e:
         "   Make sure server.py is in the same folder as recommendation_engine.py\n"
     )
 
+# ── Import skin analysis router ───────────────────────────────────────────────
+try:
+    from skin_analysis_endpoint import router as skin_router
+except ImportError as e:
+    raise RuntimeError(
+        "\n\nERROR: Could not import skin_analysis_endpoint.py\n"
+        f"   Error: {e}\n"
+        "   Make sure skin_analysis_endpoint.py is in the same folder as server.py\n"
+    )
+
 # ── App setup ─────────────────────────────────────────────────────────────────
 app = FastAPI(title="GlowIQ API", version="1.0.0")
+
+# ── Register skin analysis router ─────────────────────────────────────────────
+app.include_router(skin_router)
 
 # Allow your React dev server to call this backend
 app.add_middleware(
@@ -154,6 +176,11 @@ class SetRolePayload(BaseModel):
     new_role: str
     admin_email: str
     admin_password: str
+
+class ReportPayload(BaseModel):
+    formData: dict
+    chatHistory: list = []
+    recommendedProducts: list = []
 
 # ── Auth Endpoints ─────────────────────────────────────────────────────────────
 
@@ -457,8 +484,6 @@ def get_orders(email: str = ""):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
-
 @app.get("/api/admin/orders")
 def admin_get_orders(admin_email: str = "", admin_password: str = ""):
     """Admin endpoint to get all orders with user info."""
@@ -500,6 +525,281 @@ def admin_get_orders(admin_email: str = "", admin_password: str = ""):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── Personalised Recommendations for Report ──────────────────────────────────────
+
+class FilterPayload(BaseModel):
+    skinType: str = ""
+    concerns: list = []
+    budget: str = ""
+    top_n: int = 50
+
+
+@app.post("/api/report/recommendations")
+def get_report_recommendations(body: FilterPayload):
+    """
+    Returns personalised product list filtered by skin type, concerns, and budget.
+    Called by SkinReportGenerator before generating the PDF.
+    """
+    try:
+        results = get_filtered_recommendations(
+            df,
+            skin_type=body.skinType,
+            concerns=body.concerns,
+            budget=body.budget,
+            top_n=body.top_n,
+        )
+        # Convert to clean dicts — replace NaN with None so JSON serialises cleanly
+        results = results.replace([float("inf"), float("-inf")], None)
+        results = results.where(pd.notnull(results), None)
+        records = []
+        for row in results.to_dict("records"):
+            clean = {}
+            for k, v in row.items():
+                if isinstance(v, float) and (v != v or v == float("inf") or v == float("-inf")):
+                    clean[k] = None
+                else:
+                    clean[k] = v
+            records.append(clean)
+        return {"ok": True, "count": len(records), "products": records}
+    except Exception as e:
+        print(f"Recommendations error: {str(e)}", flush=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Report Endpoint ────────────────────────────────────────────────────────────
+
+@app.post("/api/report/generate")
+def generate_report(body: ReportPayload):
+    try:
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=20 * mm,
+            leftMargin=20 * mm,
+            topMargin=20 * mm,
+            bottomMargin=20 * mm,
+        )
+
+        styles = getSampleStyleSheet()
+
+        title_style = ParagraphStyle(
+            "ReportTitle",
+            parent=styles["Title"],
+            fontSize=22,
+            textColor=colors.HexColor("#b5478a"),
+            alignment=TA_CENTER,
+            spaceAfter=4,
+        )
+        subtitle_style = ParagraphStyle(
+            "ReportSubtitle",
+            parent=styles["Normal"],
+            fontSize=10,
+            textColor=colors.HexColor("#888888"),
+            alignment=TA_CENTER,
+            spaceAfter=12,
+        )
+        section_header_style = ParagraphStyle(
+            "SectionHeader",
+            parent=styles["Heading2"],
+            fontSize=13,
+            textColor=colors.HexColor("#b5478a"),
+            spaceBefore=14,
+            spaceAfter=6,
+            borderPad=2,
+        )
+        body_style = ParagraphStyle(
+            "ReportBody",
+            parent=styles["Normal"],
+            fontSize=10,
+            leading=15,
+            textColor=colors.HexColor("#333333"),
+        )
+        label_style = ParagraphStyle(
+            "Label",
+            parent=styles["Normal"],
+            fontSize=9,
+            textColor=colors.HexColor("#888888"),
+        )
+        value_style = ParagraphStyle(
+            "Value",
+            parent=styles["Normal"],
+            fontSize=10,
+            textColor=colors.HexColor("#222222"),
+        )
+
+        story = []
+
+        # ── Header ──
+        story.append(Paragraph("GlowIQ Skin Analysis Report", title_style))
+        generated_at = datetime.now(IST).strftime("%d %B %Y, %I:%M %p IST")
+        story.append(Paragraph(f"Generated on {generated_at}", subtitle_style))
+        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#e8c4da")))
+        story.append(Spacer(1, 10))
+
+        # ── Skin Profile ──
+        form = body.formData
+        story.append(Paragraph("Your Skin Profile", section_header_style))
+
+        profile_fields = [
+            ("Name",         form.get("name", "—")),
+            ("Age",          form.get("age", "—")),
+            ("Skin Type",    form.get("skinType", "—")),
+            ("Skin Tone",    form.get("skinTone", "—")),
+            ("Concerns",     ", ".join(form.get("concerns", [])) if isinstance(form.get("concerns"), list) else form.get("concerns", "—")),
+            ("Sensitivity",  form.get("sensitivity", "—")),
+            ("Climate",      form.get("climate", "—")),
+            ("Budget",       form.get("budget", "—")),
+        ]
+
+        table_data = []
+        for label, value in profile_fields:
+            table_data.append([
+                Paragraph(label, label_style),
+                Paragraph(str(value) if value else "—", value_style),
+            ])
+
+        profile_table = Table(table_data, colWidths=[45 * mm, 120 * mm])
+        profile_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#fdf0f8")),
+            ("BACKGROUND", (1, 0), (1, -1), colors.white),
+            ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.HexColor("#fdf0f8"), colors.white]),
+            ("GRID",       (0, 0), (-1, -1), 0.5, colors.HexColor("#e8c4da")),
+            ("VALIGN",     (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 8),
+        ]))
+        story.append(profile_table)
+        story.append(Spacer(1, 10))
+
+        # ── Recommended Products ──
+        if body.recommendedProducts:
+            story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#e8c4da")))
+            story.append(Paragraph("Recommended Products", section_header_style))
+
+            hdr_style = ParagraphStyle(
+                "ProdHdr",
+                parent=styles["Normal"],
+                fontSize=9, fontName="Helvetica-Bold",
+                textColor=colors.white, leading=12,
+            )
+            cell_style = ParagraphStyle(
+                "ProdCell",
+                parent=styles["Normal"],
+                fontSize=9, textColor=colors.HexColor("#222222"), leading=13,
+            )
+            price_style = ParagraphStyle(
+                "ProdPrice",
+                parent=styles["Normal"],
+                fontSize=9, textColor=colors.HexColor("#b5478a"),
+                fontName="Helvetica-Bold", leading=13,
+            )
+
+            prod_data = [[
+                Paragraph("#", hdr_style),
+                Paragraph("Product Name", hdr_style),
+                Paragraph("Brand", hdr_style),
+                Paragraph("Price", hdr_style),
+            ]]
+            for i, p in enumerate(body.recommendedProducts, 1):
+                name  = (p.get("product_name") or p.get("name") or "—").strip()
+                brand = (p.get("brand") or p.get("Brand") or "—").strip()
+                raw_price = p.get("price") or p.get("Price") or p.get("selling_price") or "—"
+                try:
+                    v = float(str(raw_price).replace("Rs","").replace(",","").strip())
+                    price = f"Rs {v:,.0f}" if v >= 1000 else f"Rs {v:.2f}"
+                except Exception:
+                    price = str(raw_price)
+
+                prod_data.append([
+                    Paragraph(str(i), cell_style),
+                    Paragraph(name,   cell_style),
+                    Paragraph(brand,  cell_style),
+                    Paragraph(price,  price_style),
+                ])
+
+            prod_table = Table(
+                prod_data,
+                colWidths=[10 * mm, 80 * mm, 45 * mm, 30 * mm],
+            )
+            prod_table.setStyle(TableStyle([
+                ("BACKGROUND",    (0, 0), (-1, 0),  colors.HexColor("#b5478a")),
+                ("ROWBACKGROUNDS",(0, 1), (-1, -1), [colors.HexColor("#fdf0f8"), colors.white]),
+                ("GRID",          (0, 0), (-1, -1), 0.5, colors.HexColor("#e8c4da")),
+                ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING",    (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LEFTPADDING",   (0, 0), (-1, -1), 7),
+                ("RIGHTPADDING",  (0, 0), (-1, -1), 7),
+            ]))
+            story.append(prod_table)
+            story.append(Spacer(1, 10))
+
+        # ── Chat / AI Advice ──
+        if body.chatHistory:
+            story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#e8c4da")))
+            story.append(Paragraph("AI Skincare Advice", section_header_style))
+
+            assistant_style = ParagraphStyle(
+                "AssistantMsg",
+                parent=body_style,
+                leftIndent=10,
+                spaceBefore=4,
+                spaceAfter=4,
+            )
+            user_style = ParagraphStyle(
+                "UserMsg",
+                parent=body_style,
+                leftIndent=10,
+                textColor=colors.HexColor("#666666"),
+                spaceBefore=4,
+                spaceAfter=4,
+            )
+
+            for msg in body.chatHistory:
+                role = msg.get("role", "")
+                content = str(msg.get("content", "")).strip()
+                if not content:
+                    continue
+                if role == "assistant":
+                    story.append(Paragraph(f"<b>GlowIQ:</b> {content}", assistant_style))
+                elif role == "user":
+                    story.append(Paragraph(f"<b>You:</b> {content}", user_style))
+
+            story.append(Spacer(1, 6))
+
+        # ── Footer ──
+        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#e8c4da")))
+        footer_style = ParagraphStyle(
+            "Footer",
+            parent=styles["Normal"],
+            fontSize=8,
+            textColor=colors.HexColor("#aaaaaa"),
+            alignment=TA_CENTER,
+            spaceBefore=8,
+        )
+        story.append(Paragraph(
+            "This report is generated by GlowIQ — Your AI-Powered Skincare Companion. "
+            "For personalised medical advice, please consult a dermatologist.",
+            footer_style,
+        ))
+
+        doc.build(story)
+        buffer.seek(0)
+
+        filename = f"GlowIQ_Report_{datetime.now(IST).strftime('%Y%m%d_%H%M%S')}.pdf"
+        return StreamingResponse(
+            buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    except Exception as e:
+        print(f"Report generation error: {str(e)}", flush=True)
+        raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
+
+
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("\n" + "-" * 50)
@@ -508,6 +808,7 @@ if __name__ == "__main__":
     print("API:    http://localhost:8000")
     print("Health: http://localhost:8000/health")
     print("Docs:   http://localhost:8000/docs")
+    print("Skin:   http://localhost:8000/api/analyze-skin")
     print("-" * 50)
     print("Keep this terminal open while using the React app.")
     print("Stop with Ctrl+C\n")

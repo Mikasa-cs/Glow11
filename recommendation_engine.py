@@ -6,6 +6,7 @@ Features:
   2. Season-based recommendations
   3. Near-expiry product offers (Buy 2 Get 3 Free, max order 999)
   4. Click-tracking → surface top-clicked products
+  5. Personalised filtering by skin type, concerns, budget → report products
 """
 
 import pandas as pd
@@ -27,14 +28,47 @@ def load_data(csv_path: str = "Skin_Care.csv") -> pd.DataFrame:
     # Strip whitespace from column names
     df.columns = df.columns.str.strip()
 
-    # Clean price → numeric (remove "Rs   " and ".")
-    df["price_num"] = (
-        df["price"]
-        .str.replace("Rs   ", "", regex=False)
-        .str.replace(".", "", regex=False)
-        .str.replace(",", "", regex=False)
-        .pipe(pd.to_numeric, errors="coerce")
-    )
+    # Clean price → numeric
+    # Indonesian format: "Rs   1,035.00" (dots = thousand sep) or "Rs   139.00" (dot = decimal)
+    # Strategy: strip prefix, then detect format and parse correctly
+    def parse_price(val):
+        if pd.isna(val):
+            return np.nan
+        s = str(val).strip()
+        # Remove currency prefix
+        s = s.replace("Rs   ", "").replace("Rs  ", "").replace("Rs ", "").replace("Rs", "").strip()
+        # Remove any trailing text after space (e.g. "78.540-16%(22)")
+        s = s.split()[0] if s else s
+        # Remove dashes and percent junk
+        s = s.split("-")[0]
+        # Count dots and commas
+        dot_count   = s.count(".")
+        comma_count = s.count(",")
+        try:
+            if dot_count == 0 and comma_count == 0:
+                # Plain integer: "139"
+                return float(s)
+            elif dot_count == 1 and comma_count == 0:
+                # Could be decimal "139.00" or thousand-sep "1.035"
+                parts = s.split(".")
+                if len(parts[1]) == 3:
+                    # Thousand separator: "1.035" → 1035
+                    return float(s.replace(".", ""))
+                else:
+                    # Decimal: "139.00" → 139.0
+                    return float(s)
+            elif dot_count >= 2:
+                # Multiple dots = all thousand separators: "1.035.000" → 1035000
+                return float(s.replace(".", ""))
+            elif comma_count == 1 and dot_count == 0:
+                # Comma as decimal: "139,00" → 139.0
+                return float(s.replace(",", "."))
+            else:
+                return float(s.replace(".", "").replace(",", "."))
+        except Exception:
+            return np.nan
+
+    df["price_num"] = df["price"].apply(parse_price)
 
     # Parse dates
     for col in ["manufacture_date", "expiry_date"]:
@@ -101,20 +135,17 @@ def get_seasonal_recommendations(
 ) -> pd.DataFrame:
     """
     Return top_n products matching the current (or supplied) season.
-    Each result includes 'recommended_badge' = True so the UI can show the pop-up chip.
     """
     if season is None:
         season = detect_current_season()
 
     targets = SEASON_MAP.get(season, SEASON_MAP["stable"])
-    # also include year-round products
     if season != "stable":
         targets += SEASON_MAP["stable"]
 
     mask = df["peak_season"].isin(targets)
     recs = df[mask].copy()
 
-    # Rank by low_sell_probability ASC (good sellers first) then price ASC
     recs = recs.sort_values(
         ["low_sell_probability", "price_num"], ascending=[True, True]
     ).head(top_n)
@@ -134,14 +165,10 @@ def get_seasonal_recommendations(
 # 4. NEAR-EXPIRY OFFERS
 # ──────────────────────────────────────────────
 
-EXPIRY_WARNING_DAYS = 365   # products expiring within 1 year get an offer
+EXPIRY_WARNING_DAYS = 365
 MAX_OFFER_ORDERS    = 999
 
 def get_near_expiry_offers(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Products expiring within EXPIRY_WARNING_DAYS get:
-      'Buy 2 Get 3 Free — up to {MAX_OFFER_ORDERS} orders!'
-    """
     near = df[
         (df["days_to_expiry"] >= 0) &
         (df["days_to_expiry"] <= EXPIRY_WARNING_DAYS)
@@ -173,7 +200,6 @@ def get_near_expiry_offers(df: pd.DataFrame) -> pd.DataFrame:
 DB_PATH = "skincare_clicks.db"
 
 def init_click_db(db_path: str = DB_PATH):
-    """Create SQLite table for click tracking."""
     con = sqlite3.connect(db_path)
     con.execute("""
         CREATE TABLE IF NOT EXISTS product_clicks (
@@ -196,7 +222,6 @@ def init_click_db(db_path: str = DB_PATH):
 
 def record_click(session_id: str, product_id: str, product_name: str,
                  db_path: str = DB_PATH):
-    """Log one click and update summary."""
     con = sqlite3.connect(db_path)
     con.execute(
         "INSERT OR IGNORE INTO product_clicks (session_id, product_id, product_name) "
@@ -212,7 +237,6 @@ def record_click(session_id: str, product_id: str, product_name: str,
     con.close()
 
 def get_session_clicks(session_id: str, db_path: str = DB_PATH) -> dict:
-    """Return click count per product for this session."""
     con = sqlite3.connect(db_path)
     rows = con.execute(
         "SELECT product_id, COUNT(*) as cnt FROM product_clicks "
@@ -228,10 +252,6 @@ def get_top_clicked_products(
     threshold: int = 2,
     db_path: str = DB_PATH,
 ) -> pd.DataFrame:
-    """
-    Returns products the session clicked > threshold times.
-    These bubble to top + show a 'Reminder: You kept checking this!' banner.
-    """
     session_clicks = get_session_clicks(session_id, db_path)
     hot_ids = [pid for pid, cnt in session_clicks.items() if cnt > threshold]
 
@@ -251,7 +271,126 @@ def get_top_clicked_products(
 
 
 # ──────────────────────────────────────────────
-# 6. MASTER RECOMMENDATION FUNCTION
+# 6. PERSONALISED FILTERING FOR REPORT
+# ──────────────────────────────────────────────
+
+# Budget buckets matching the frontend BUDGETS array
+BUDGET_RANGES = {
+    "Under Rs 100":  (0,     100),    # price_num >= 0  AND <= 100
+    "Rs 100–200":    (100,   200),
+    "Rs 200–500":    (200,   500),
+    "Rs 500+":       (500,   float("inf")),
+}
+
+# Map concern labels (from frontend) → keywords searched in notable_effects / description
+CONCERN_KEYWORDS = {
+    "Acne":         ["acne", "acne-free", "pimple", "blemish", "anti-acne"],
+    "Brightening":  ["brightening", "bright", "glow", "radiance", "whitening", "luminous"],
+    "Anti-Aging":   ["anti-aging", "anti aging", "wrinkle", "aging", "firming", "collagen"],
+    "Pore-Care":    ["pore", "pore-care", "pore minimizing", "blackhead"],
+    "Moisturizing": ["moisturizing", "moisturizer", "hydrating", "hydration", "moisture"],
+    "Soothing":     ["soothing", "soothe", "calming", "sensitive", "gentle"],
+}
+
+# Map skin type labels (frontend) → keywords in skintype column
+SKIN_TYPE_KEYWORDS = {
+    "Oily":        ["oily", "oily skin"],
+    "Dry":         ["dry", "dry skin"],
+    "Combination": ["combination", "combination skin"],
+    "Sensitive":   ["sensitive", "sensitive skin"],
+    "Normal":      ["normal", "normal skin", "all skin"],
+}
+
+
+def get_filtered_recommendations(
+    df: pd.DataFrame,
+    skin_type: str = "",
+    concerns: list = None,
+    budget: str = "",
+    top_n: int = 50,
+) -> pd.DataFrame:
+    """
+    Filter and score the full dataset by user's skin type, concerns, and budget.
+    Returns up to top_n ranked products for the PDF report.
+
+    Scoring (higher = better match):
+      +3  per concern keyword match in notable_effects or description
+      +2  if skin type matches skintype column
+      +1  if product is not low-selling (low_sell_probability < 0.35)
+      -99 if price is outside budget (hard filter)
+    """
+    if concerns is None:
+        concerns = []
+
+    filtered = df.copy()
+
+    # ── Budget hard filter ──────────────────────────────────────────────────
+    if budget and budget in BUDGET_RANGES:
+        lo, hi = BUDGET_RANGES[budget]
+        filtered = filtered[
+            (filtered["price_num"] >= lo) & (filtered["price_num"] <= hi)
+        ]
+
+    # NOTE: If the budget filter returns 0 results we return an empty
+    # DataFrame rather than silently falling back to the full dataset,
+    # which would show out-of-budget products.
+    # The caller / frontend should surface a "No products found for this
+    # budget" message instead.
+
+    # ── Scoring ─────────────────────────────────────────────────────────────
+    scores = pd.Series(0.0, index=filtered.index)
+
+    # Skin type score
+    if skin_type:
+        st_keywords = SKIN_TYPE_KEYWORDS.get(skin_type, [skin_type.lower()])
+        skintype_col = filtered["skintype"].fillna("").str.lower()
+        for kw in st_keywords:
+            scores += skintype_col.str.contains(kw, na=False).astype(float) * 2
+
+    # Concern score — search notable_effects and description
+    if concerns:
+        effects_col = filtered["notable_effects"].fillna("").str.lower()
+        desc_col    = filtered["description"].fillna("").str.lower()
+        for concern in concerns:
+            keywords = CONCERN_KEYWORDS.get(concern, [concern.lower()])
+            for kw in keywords:
+                scores += effects_col.str.contains(kw, na=False).astype(float) * 3
+                scores += desc_col.str.contains(kw, na=False).astype(float) * 1
+
+    # Prefer well-selling products
+    scores += (filtered["low_sell_probability"].fillna(1) < 0.35).astype(float) * 1
+
+    filtered = filtered.copy()
+    filtered["match_score"] = scores
+
+    # ── Sort: score DESC, then price ASC ───────────────────────────────────
+    filtered = filtered.sort_values(
+        ["match_score", "price_num"], ascending=[False, True]
+    ).head(top_n)
+
+    # ── Format price for display ────────────────────────────────────────────
+    def fmt_price(row):
+        try:
+            v = float(row["price_num"])
+            if v >= 1000:
+                return f"Rs {v:,.0f}"
+            else:
+                return f"Rs {v:.2f}"
+        except Exception:
+            return str(row.get("price", "—"))
+
+    filtered["price_display"] = filtered.apply(fmt_price, axis=1)
+
+    return filtered[[
+        "product_id", "product_name", "brand", "product_type",
+        "price", "price_num", "price_display",
+        "skintype", "notable_effects", "description",
+        "low_sell_probability", "match_score", "picture_src",
+    ]].reset_index(drop=True)
+
+
+# ──────────────────────────────────────────────
+# 7. MASTER RECOMMENDATION FUNCTION
 # ──────────────────────────────────────────────
 
 def build_recommendation_payload(
@@ -260,9 +399,6 @@ def build_recommendation_payload(
     season: str = None,
     db_path: str = DB_PATH,
 ) -> dict:
-    """
-    Assembles the full payload for the frontend.
-    """
     init_click_db(db_path)
 
     return {
@@ -283,7 +419,6 @@ if __name__ == "__main__":
     df = load_data("Skin_Care.csv")
     print(f"✅ Loaded {len(df)} products\n")
 
-    # Demo clicks
     init_click_db()
     for _ in range(3):
         record_click("demo_session", df["product_id"].iloc[0],
@@ -296,7 +431,13 @@ if __name__ == "__main__":
     print(f"⏰  Near-expiry   : {len(payload['near_expiry_offers'])} products")
     print(f"👀 Top-clicked   : {len(payload['top_clicked_products'])} products")
 
-    # Save payload as JSON for other services
+    # Test personalised filter
+    recs = get_filtered_recommendations(
+        df, skin_type="Oily", concerns=["Acne", "Brightening"], budget="Rs 100–200"
+    )
+    print(f"\n🎯 Personalised recs (Oily, Acne+Brightening, Rs100-200): {len(recs)} products")
+    print(recs[["product_name", "brand", "price_display", "match_score"]].head(10).to_string())
+
     with open("recommendation_payload.json", "w") as f:
         json.dump(payload, f, indent=2, default=str)
     print("\n💾 Saved recommendation_payload.json")

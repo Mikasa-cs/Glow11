@@ -1,17 +1,9 @@
 // src/pages/ChatbotPage.jsx
+import SkinReportGenerator from "../components/SkinReportGenerator";
 import { useState, useEffect, useRef } from "react";
 import { C } from "../theme/colors";
 import { Card, SectionTitle } from "../components/Shared";
 
-// ── API config ──────────────────────────────────────────────────────────────
-// 1. Copy .env.example → .env  (in your glowiq/ root folder)
-// 2. Set VITE_GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxx  (get it free at console.groq.com)
-// 3. Restart the Vite dev server (npm run dev) — Vite only reads .env at startup
-//
-// To switch to OpenAI instead:
-//   • Change API_URL  → "https://api.openai.com/v1/chat/completions"
-//   • Change API_KEY  → import.meta.env.VITE_OPENAI_API_KEY
-//   • Change AI_MODEL → "gpt-4o"
 const API_URL  = "https://api.groq.com/openai/v1/chat/completions";
 const API_KEY  = import.meta.env.VITE_GROQ_API_KEY || "gREMOVED";
 const AI_MODEL = "llama-3.3-70b-versatile";
@@ -63,14 +55,13 @@ const SUGGESTIONS = [
 ];
 
 // ── Key status helper ────────────────────────────────────────────────────────
-// Returns one of: "missing" | "placeholder" | "ok"
 function getKeyStatus() {
   if (!API_KEY)                              return "missing";
   if (API_KEY === "your_groq_api_key_here") return "placeholder";
   return "ok";
 }
 
-// ── Setup banner (shown when key is missing or placeholder) ──────────────────
+// ── Setup banner ─────────────────────────────────────────────────────────────
 function SetupBanner() {
   const [copied, setCopied] = useState(false);
 
@@ -91,27 +82,19 @@ function SetupBanner() {
       fontSize: "0.82rem",
       lineHeight: 1.7,
     }}>
-      {/* Title row */}
       <div style={{ color: C.danger, fontWeight: 700, marginBottom: 8, fontSize: "0.87rem" }}>
         ⚠️ Groq API key not set — chatbot is disabled
       </div>
-
-      {/* Steps */}
       <div style={{ color: C.muted }}>
         <div style={{ marginBottom: 4 }}>
           <span style={{ color: C.text, fontWeight: 600 }}>Step 1</span>
           {" — Get a free key at "}
-          <a
-            href="https://console.groq.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: C.accent2, textDecoration: "underline" }}
-          >
+          <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer"
+            style={{ color: C.accent2, textDecoration: "underline" }}>
             console.groq.com
           </a>
           {" → API Keys → Create key"}
         </div>
-
         <div style={{ marginBottom: 8 }}>
           <span style={{ color: C.text, fontWeight: 600 }}>Step 2</span>
           {" — Add it to "}
@@ -120,39 +103,21 @@ function SetupBanner() {
           </code>
           :
         </div>
-
-        {/* .env snippet with copy button */}
         <div style={{
-          background: C.bg2,
-          border: `1px solid ${C.border}`,
-          borderRadius: 8,
-          padding: "8px 12px",
-          fontFamily: "monospace",
-          fontSize: "0.8rem",
-          color: "#86efac",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 8,
+          background: C.bg2, border: `1px solid ${C.border}`, borderRadius: 8,
+          padding: "8px 12px", fontFamily: "monospace", fontSize: "0.8rem",
+          color: "#86efac", display: "flex", justifyContent: "space-between",
+          alignItems: "center", marginBottom: 8,
         }}>
           <span>VITE_GROQ_API_KEY=<em style={{ color: C.muted }}>your_key_here</em></span>
-          <button
-            onClick={copyLine}
-            style={{
-              background: "transparent",
-              border: `1px solid ${C.border}`,
-              color: C.muted,
-              borderRadius: 6,
-              padding: "2px 10px",
-              cursor: "pointer",
-              fontSize: "0.72rem",
-              transition: "color 0.15s",
-            }}
-          >
+          <button onClick={copyLine} style={{
+            background: "transparent", border: `1px solid ${C.border}`,
+            color: C.muted, borderRadius: 6, padding: "2px 10px",
+            cursor: "pointer", fontSize: "0.72rem", transition: "color 0.15s",
+          }}>
             {copied ? "✓ Copied" : "Copy"}
           </button>
         </div>
-
         <div style={{ color: C.muted }}>
           <span style={{ color: C.text, fontWeight: 600 }}>Step 3</span>
           {" — Restart the dev server: "}
@@ -178,12 +143,11 @@ export default function ChatbotPage() {
         "Hi! I'm your GlowIQ AI analyst. Ask me anything about this dashboard — gender segments, review scores, revenue projections, opportunity gaps, or customer journey insights.",
     },
   ]);
-  const [input,   setInput]   = useState("");
-  const [loading, setLoading] = useState(false);
-  const [apiError, setApiError] = useState(""); // runtime API errors only
+  const [input,    setInput]    = useState("");
+  const [loading,  setLoading]  = useState(false);
+  const [apiError, setApiError] = useState("");
   const bottomRef = useRef(null);
 
-  // Auto-scroll to latest message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
@@ -221,9 +185,7 @@ export default function ChatbotPage() {
       const reply = data.choices?.[0]?.message?.content ?? "Sorry, I couldn't process that.";
       setMessages([...newHistory, { role: "assistant", content: reply }]);
     } catch (e) {
-      // Show runtime error inline so the user can retry
       setApiError(`❌ ${e.message}`);
-      // Also append to chat so it's visible in scroll history
       setMessages([...newHistory, { role: "assistant", content: `❌ ${e.message}` }]);
     } finally {
       setLoading(false);
@@ -240,60 +202,38 @@ export default function ChatbotPage() {
 
       <Card style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-        {/* ── Setup banner (key missing) ── */}
         {!keyOk && <SetupBanner />}
 
-        {/* ── Runtime API error banner ── */}
         {apiError && keyOk && (
           <div style={{
-            background: "#3b1c1c",
-            border: `1px solid ${C.danger}`,
-            borderRadius: 8,
-            padding: "10px 14px",
-            marginBottom: 12,
-            color: C.danger,
-            fontSize: "0.83rem",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            background: "#3b1c1c", border: `1px solid ${C.danger}`,
+            borderRadius: 8, padding: "10px 14px", marginBottom: 12,
+            color: C.danger, fontSize: "0.83rem",
+            display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
             <span>{apiError}</span>
-            <button
-              onClick={() => setApiError("")}
-              style={{ background: "transparent", border: "none", color: C.danger, cursor: "pointer", fontSize: "1rem", lineHeight: 1 }}
-            >
-              ✕
-            </button>
+            <button onClick={() => setApiError("")} style={{
+              background: "transparent", border: "none",
+              color: C.danger, cursor: "pointer", fontSize: "1rem", lineHeight: 1,
+            }}>✕</button>
           </div>
         )}
 
         {/* ── Message list ── */}
         <div style={{
-          flex: 1,
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-          marginBottom: 12,
-          // Fade out at top when scrolled
+          flex: 1, overflowY: "auto", display: "flex",
+          flexDirection: "column", gap: 12, marginBottom: 12,
           maskImage: "linear-gradient(to bottom, transparent 0%, black 40px)",
           WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 40px)",
         }}>
           {messages.map((m, i) => (
-            <div
-              key={i}
-              style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}
-            >
+            <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
               <div style={{
-                maxWidth: "80%",
-                padding: "10px 14px",
+                maxWidth: "80%", padding: "10px 14px",
                 borderRadius: m.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
                 background: m.role === "user" ? C.accent2 + "33" : C.bg2,
                 border: `1px solid ${m.role === "user" ? C.accent2 + "55" : C.border}`,
-                color: C.text,
-                fontSize: "0.87rem",
-                lineHeight: 1.6,
-                whiteSpace: "pre-wrap",
+                color: C.text, fontSize: "0.87rem", lineHeight: 1.6, whiteSpace: "pre-wrap",
               }}>
                 {m.role === "assistant" && (
                   <div style={{ color: C.accent2, fontSize: "0.72rem", marginBottom: 4, fontWeight: 700 }}>
@@ -305,33 +245,22 @@ export default function ChatbotPage() {
             </div>
           ))}
 
-          {/* Typing indicator */}
           {loading && (
             <div style={{ display: "flex", justifyContent: "flex-start" }}>
               <div style={{
-                background: C.bg2,
-                border: `1px solid ${C.border}`,
-                borderRadius: "14px 14px 14px 4px",
-                padding: "10px 16px",
-                color: C.muted,
-                fontSize: "0.85rem",
+                background: C.bg2, border: `1px solid ${C.border}`,
+                borderRadius: "14px 14px 14px 4px", padding: "10px 16px",
+                color: C.muted, fontSize: "0.85rem",
               }}>
                 <div style={{ color: C.accent2, fontSize: "0.72rem", marginBottom: 6, fontWeight: 700 }}>
                   🤖 GlowIQ AI
                 </div>
                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                   {[0, 0.2, 0.4].map((delay, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        width: 7,
-                        height: 7,
-                        borderRadius: "50%",
-                        background: C.muted,
-                        animation: "dotBounce 1.2s infinite",
-                        animationDelay: `${delay}s`,
-                      }}
-                    />
+                    <div key={idx} style={{
+                      width: 7, height: 7, borderRadius: "50%", background: C.muted,
+                      animation: "dotBounce 1.2s infinite", animationDelay: `${delay}s`,
+                    }} />
                   ))}
                 </div>
               </div>
@@ -341,7 +270,7 @@ export default function ChatbotPage() {
           <div ref={bottomRef} />
         </div>
 
-        {/* ── Quick suggestion chips (shown only on first load) ── */}
+        {/* ── Quick suggestion chips ── */}
         {messages.length <= 1 && keyOk && (
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: C.muted, fontSize: "0.75rem", marginBottom: 8 }}>
@@ -349,19 +278,12 @@ export default function ChatbotPage() {
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setInput(s)}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: 8,
-                    border: `1px solid ${C.border}`,
-                    background: C.bg2,
-                    color: C.muted,
-                    cursor: "pointer",
-                    fontSize: "0.78rem",
-                    transition: "border-color 0.15s, color 0.15s",
-                  }}
+                <button key={s} onClick={() => setInput(s)} style={{
+                  padding: "6px 12px", borderRadius: 8,
+                  border: `1px solid ${C.border}`, background: C.bg2,
+                  color: C.muted, cursor: "pointer", fontSize: "0.78rem",
+                  transition: "border-color 0.15s, color 0.15s",
+                }}
                   onMouseEnter={e => { e.target.style.borderColor = C.accent2; e.target.style.color = C.text; }}
                   onMouseLeave={e => { e.target.style.borderColor = C.border;  e.target.style.color = C.muted; }}
                 >
@@ -381,38 +303,25 @@ export default function ChatbotPage() {
             placeholder={keyOk ? "Ask about the dashboard insights…" : "Add your Groq API key to enable the chatbot"}
             disabled={!keyOk}
             style={{
-              flex: 1,
-              padding: "10px 14px",
-              borderRadius: 10,
-              border: `1px solid ${C.border}`,
-              background: C.bg2,
-              color: keyOk ? C.text : C.muted,
-              fontSize: "0.87rem",
-              outline: "none",
-              cursor: keyOk ? "text" : "not-allowed",
+              flex: 1, padding: "10px 14px", borderRadius: 10,
+              border: `1px solid ${C.border}`, background: C.bg2,
+              color: keyOk ? C.text : C.muted, fontSize: "0.87rem",
+              outline: "none", cursor: keyOk ? "text" : "not-allowed",
               opacity: keyOk ? 1 : 0.6,
             }}
           />
-          <button
-            onClick={send}
-            disabled={loading || !input.trim() || !keyOk}
-            style={{
-              padding: "10px 20px",
-              borderRadius: 10,
-              background: (loading || !input.trim() || !keyOk) ? C.border : C.accent2,
-              color:      (loading || !input.trim() || !keyOk) ? C.muted  : C.bg,
-              fontWeight: 700,
-              border: "none",
-              cursor: (loading || !input.trim() || !keyOk) ? "not-allowed" : "pointer",
-              fontSize: "0.87rem",
-              transition: "all 0.15s",
-            }}
-          >
+          <button onClick={send} disabled={loading || !input.trim() || !keyOk} style={{
+            padding: "10px 20px", borderRadius: 10,
+            background: (loading || !input.trim() || !keyOk) ? C.border : C.accent2,
+            color:      (loading || !input.trim() || !keyOk) ? C.muted  : C.bg,
+            fontWeight: 700, border: "none",
+            cursor: (loading || !input.trim() || !keyOk) ? "not-allowed" : "pointer",
+            fontSize: "0.87rem", transition: "all 0.15s",
+          }}>
             {loading ? "…" : "Send"}
           </button>
         </div>
 
-        {/* ── Character counter for long inputs ── */}
         {input.length > 200 && (
           <div style={{ textAlign: "right", color: input.length > 450 ? C.danger : C.muted, fontSize: "0.72rem", marginTop: 4 }}>
             {input.length} / 512
@@ -428,6 +337,11 @@ export default function ChatbotPage() {
           40%            { transform: translateY(-5px); opacity: 1;   }
         }
       `}</style>
+
+      {/* ── Floating skin report generator ── */}
+      <SkinReportGenerator
+        chatHistory={messages}
+      />
     </div>
   );
 }

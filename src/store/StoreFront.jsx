@@ -4,6 +4,9 @@ import { ALL_PRODUCTS } from "../data/products";
 import { useAuth } from "../auth/AuthContext";
 import ProductDetailPage from "./ProductDetailPage";
 import PaymentGateway from "./PaymentGateway";
+import SkinReportGenerator from "../components/SkinReportGenerator";
+import SkinSelfieAnalyzer from "../components/SkinSelfieAnalyzer";
+import SkinResultsPage from "../components/SkinResultsPage";
 
 // ── PaymentGateway Theme (same THEMES object) ─────────────────────────────────
 const THEMES = {
@@ -174,6 +177,8 @@ const HOMEPAGE_SECTIONS = [
 const VIEW_HOME = "home";
 const VIEW_CAT = "catalogue";
 const VIEW_ORDERS = "orders";
+const VIEW_AI_ANALYZER = "ai-analyzer";
+const VIEW_AI_RESULTS = "ai-results";
 
 // Theme persistence
 function useThemeState() {
@@ -438,6 +443,8 @@ export default function StoreFront() {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [aiAnalysisData, setAiAnalysisData] = useState(null);
+  const [aiPreviewUrl, setAiPreviewUrl] = useState("");
   const [samples, setSamples] = useState([]);
   const [toasts, setToasts] = useState([]);
   const toastId = useRef(0);
@@ -702,7 +709,7 @@ export default function StoreFront() {
                 </p>
                 <div style={{display:"flex",gap:12}}>
                   <button className="sf-btn" onClick={()=>setView(VIEW_CAT)} style={{padding:"13px 28px",borderRadius:30,border:"none",background:T.accentGrad,color:"#fff",fontWeight:700,fontSize:"0.95rem",cursor:"pointer",boxShadow:`0 8px 24px ${T.accent}44`}}>Shop Now →</button>
-
+                  <button className="sf-btn" onClick={()=>setView(VIEW_AI_ANALYZER)} style={{padding:"13px 28px",borderRadius:30,border:`2px solid ${T.accent}`,background:"transparent",color:T.accent,fontWeight:700,fontSize:"0.95rem",cursor:"pointer",boxShadow:"none",transition:"all 0.2s"}}>🤖 AI Image Analysis</button>
                 </div>
                 <div style={{display:"flex",gap:32,marginTop:36}}>
                   {[{n:"50K+",l:"Happy Clients"},{n:"200+",l:"Premium Brands"},{n:"99%",l:"Satisfaction"}].map(s=>(
@@ -831,12 +838,46 @@ export default function StoreFront() {
         )}
       </div>
 
-      {/* Toasts */}
-      <div style={{position:"fixed",bottom:24,right:24,zIndex:600,display:"flex",flexDirection:"column",gap:8}}>
-        {toasts.map(t=>(
-          <div key={t.id} style={{background:T.accentGrad,color:"#fff",padding:"11px 18px",borderRadius:12,fontSize:"0.82rem",fontWeight:700,boxShadow:`0 8px 24px ${T.accent}44`,maxWidth:300,animation:"fadeSlideUp 0.3s ease both"}}>{t.msg}</div>
-        ))}
-      </div>
+      {/* ── AI ANALYZER VIEW ── */}
+      {view===VIEW_AI_ANALYZER && (
+        <div style={{position:"relative",zIndex:1,padding:"2rem",maxWidth:600,margin:"0 auto",minHeight:"calc(100vh - 66px)"}}>
+          <button className="sf-btn" onClick={()=>setView(VIEW_HOME)} style={{marginBottom:20,padding:"8px 16px",borderRadius:10,border:`1.5px solid ${T.border}`,background:"transparent",color:T.textMid,fontSize:"0.85rem",cursor:"pointer"}}>← Back to Home</button>
+          <SkinSelfieAnalyzer 
+            onAnalysisComplete={(result) => {
+              setAiAnalysisData(result);
+              setView(VIEW_AI_RESULTS);
+            }}
+            budget=""
+          />
+        </div>
+      )}
+
+      {/* ── AI RESULTS VIEW ── */}
+      {view===VIEW_AI_RESULTS && aiAnalysisData && (
+        <div style={{position:"relative",zIndex:1,minHeight:"calc(100vh - 66px)"}}>
+          <SkinResultsPage
+            analysisData={{
+              ok: true,
+              analysis: aiAnalysisData,
+              products: [],
+              product_count: 0,
+              model_used: "claude-sonnet-4-20250514"
+            }}
+            previewUrl={aiPreviewUrl}
+            onRetry={() => setView(VIEW_AI_ANALYZER)}
+            onClose={() => setView(VIEW_HOME)}
+          />
+        </div>
+      )}
     </div>
-  );
+
+    {/* Toasts */}
+    <div style={{position:"fixed",bottom:24,right:24,zIndex:600,display:"flex",flexDirection:"column",gap:8}}>
+      {toasts.map(t=>(
+        <div key={t.id} style={{background:T.accentGrad,color:"#fff",padding:"11px 18px",borderRadius:12,fontSize:"0.82rem",fontWeight:700,boxShadow:`0 8px 24px ${T.accent}44`,maxWidth:300,animation:"fadeSlideUp 0.3s ease both"}}>{t.msg}</div>
+      ))}
+    </div>
+
+    {/* Skin Report Generator */}
+    <SkinReportGenerator theme={T} user={user} chatHistory={[]} recommendedProducts={PRODUCTS.slice(0,3)} />
 }
