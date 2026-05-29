@@ -100,7 +100,6 @@ const THEMES = {
   },
 };
 
-// Shared CSS (fonts + animations)
 const STORE_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600&family=Playfair+Display:wght@500;600&display=swap');
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -119,7 +118,6 @@ body { font-family: 'DM Sans', sans-serif; }
 ::-webkit-scrollbar-thumb { background: var(--sf-border); border-radius:10px; }
 `;
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 const RAW_SEASONAL = {"stable":[{"product_id":"307","product_name":"EMINA Skin Buddy Bubble Up Face Wash","brand":"EMINA","product_type":"Face Wash","price":"Rp 15.75","price_num":15750,"skintype":"Oily, Combination, Sensitive","notable_effects":"Hydrating, Soothing","description":"Pembersih wajah dengan busa lembut.","picture_src":"https://www.beautyhaul.com/assets/uploads/products/thumbs/800x800/Emina_Skin_Buddy_Bubble_Up_Face_Wash.jpg"},{"product_id":"880","product_name":"SENKA Perfect Whip Fresh","brand":"SENKA","product_type":"Face Wash","price":"Rp 35.000","price_num":35000,"skintype":"Oily","notable_effects":"Anti-Aging","description":"Perfect Whip Fresh adalah produk unggulan.","picture_src":"https://www.beautyhaul.com/assets/uploads/products/thumbs/800x800/f0.jpg"},{"product_id":"1","product_name":"ACWELL pH Balancing Soothing Cleansing Foam","brand":"ACWELL","product_type":"Face Wash","price":"Rp 181.800","price_num":181800,"skintype":"Normal, Dry, Combination","notable_effects":"Soothing, Balancing","description":"Membersihkan dan menenangkan kulit sensitif.","picture_src":"https://images.soco.id/8f08ced0-344d-41f4-a15e-9e45c898f92d-.jpg"}],"rainy":[{"product_id":"784","product_name":"White Aqua Micelloil Cleansing Water","brand":"PIXY","product_type":"Face Wash","price":"Rp 55.000","price_num":55000,"skintype":"Normal, Dry, Oily, Combination","notable_effects":"Hydrating, Brightening","description":"Pembersih wajah Oil in Micellar Water.","picture_src":"https://www.beautyhaul.com/assets/uploads/products/thumbs/800x800/Micell-Oil-Speed-Remove-Close.webp"},{"product_id":"1","product_name":"ACWELL pH Balancing Soothing Cleansing Foam","brand":"ACWELL","product_type":"Face Wash","price":"Rp 181.800","price_num":181800,"skintype":"Normal, Dry, Combination","notable_effects":"Soothing, Balancing","description":"Membersihkan dan menenangkan kulit sensitif.","picture_src":"https://images.soco.id/8f08ced0-344d-41f4-a15e-9e45c898f92d-.jpg"}],"dry":[{"product_id":"252","product_name":"DERMALUZ Hydrate Glow Face Wash","brand":"DERMALUZ","product_type":"Face Wash","price":"Rp 41.650","price_num":41650,"skintype":"Normal, Dry","notable_effects":"Hydrating, Pore-Care, Brightening","description":"Sabun wajah yang membantu membersihkan kulit.","picture_src":"https://www.beautyhaul.com/assets/uploads/products/thumbs/800x800/Dermaluz_Hydrate_Glow_Face_Wash.png"},{"product_id":"307","product_name":"EMINA Skin Buddy Bubble Up Face Wash","brand":"EMINA","product_type":"Face Wash","price":"Rp 15.750","price_num":15750,"skintype":"Oily, Combination, Sensitive","notable_effects":"Hydrating, Soothing","description":"Pembersih wajah dengan busa lembut.","picture_src":"https://www.beautyhaul.com/assets/uploads/products/thumbs/800x800/Emina_Skin_Buddy_Bubble_Up_Face_Wash.jpg"}]};
 const RAW_LOW_SELLING = [{"product_id":"120","product_name":"BANANA BOAT Simply Protect Aqua Daily Moisture Sunscreen SPF50+","brand":"BANANA BOAT","product_type":"Sunscreen","price":"Rp 144.10","price_num":144100,"picture_src":"https://www.beautyhaul.com/assets/uploads/products/thumbs/800x800/BB_SimplyProtectAqua_DailyMoist_800x800pxl.jpg"},{"product_id":"176","product_name":"BIORE UV Tone Up UV Milk SPF 50+/PA++++","brand":"BIORE","product_type":"Sunscreen","price":"Rp 112.500","price_num":112500,"picture_src":"https://www.beautyhaul.com/assets/uploads/products/thumbs/800x800/Biore_UV_Tone_Up_UV_Milk_SPF_50%2B_PA.png"},{"product_id":"308","product_name":"Emina Sun Battle SPF 30 PA+++","brand":"EMINA","product_type":"Sunscreen","price":"Rp 29.000","price_num":29000,"picture_src":"https://www.soco.id/cdn-cgi/image/w=73,format=auto,dpr=1.45/https://images.soco.id/74aa43b8-fddf-4980-bd41-03d5702c1dd6-image-0-1624258660370"}];
 const RAW_NEAR_EXPIRY = [{"product_id":"11","product_name":"AIZEN SunOrion UV Sunscreen","brand":"AIZEN","product_type":"Sunscreen","price":"Rp 139.00","price_num":139000,"picture_src":"https://www.beautyhaul.com/assets/uploads/products/thumbs/800x800/Aizen_SunOrion_UV_Sunscreen.png"},{"product_id":"748","product_name":"Nivea Sun Face Protection Serum SPF50+ PA+++","brand":"NIVEA","product_type":"Sunscreen","price":"Rp 51.000","price_num":51000,"picture_src":"https://s3-ap-southeast-1.amazonaws.com/img-sociolla/img/p/3/3/6/5/7/33657-large_default.jpg"},{"product_id":"308","product_name":"Emina Sun Battle SPF 30 PA+++","brand":"EMINA","product_type":"Sunscreen","price":"Rp 29.000","price_num":29000,"picture_src":"https://www.soco.id/cdn-cgi/image/w=73,format=auto,dpr=1.45/https://images.soco.id/74aa43b8-fddf-4980-bd41-03d5702c1dd6-image-0-1624258660370"}];
@@ -180,7 +178,6 @@ const VIEW_ORDERS = "orders";
 const VIEW_AI_ANALYZER = "ai-analyzer";
 const VIEW_AI_RESULTS = "ai-results";
 
-// Theme persistence
 function useThemeState() {
   const [themeName, setThemeName] = useState("blossom");
   const [isDark, setIsDark] = useState(false);
@@ -189,7 +186,6 @@ function useThemeState() {
   return { themeName, setThemeName, isDark, setIsDark, T, theme };
 }
 
-// ── Theme Switcher (same as PaymentGateway) ───────────────────────────────────
 function ThemePanel({ themeName, setThemeName, isDark, setIsDark, T }) {
   const [open, setOpen] = useState(false);
   return (
@@ -226,7 +222,7 @@ function ThemePanel({ themeName, setThemeName, isDark, setIsDark, T }) {
             <div style={{fontSize:11,fontWeight:600,color:T.textSoft,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Mode</div>
             <div style={{display:"flex",gap:8}}>
               {[false,true].map(dark=>(
-                <button key={dark} onClick={()=>setIsDark(dark)} style={{
+                <button key={String(dark)} onClick={()=>setIsDark(dark)} style={{
                   flex:1, padding:"8px", borderRadius:10, cursor:"pointer",
                   border:`1.5px solid ${isDark===dark?T.accent:T.border}`,
                   background:isDark===dark?T.accentSoft:T.bg,
@@ -242,7 +238,6 @@ function ThemePanel({ themeName, setThemeName, isDark, setIsDark, T }) {
   );
 }
 
-// ── Product Card ──────────────────────────────────────────────────────────────
 function ProdCard({ product:p, T, isOffer, onAddToCart, onProductClick, cartQty=0 }) {
   const [imgErr, setImgErr] = useState(false);
   const handleAdd=(e)=>{e.stopPropagation();onAddToCart(p);};
@@ -276,7 +271,6 @@ function ProdCard({ product:p, T, isOffer, onAddToCart, onProductClick, cartQty=
   );
 }
 
-// ── Mini Card (horizontal scroll rows) ───────────────────────────────────────
 function MiniCard({ product:p, T, badge, color, onAdd, cartQty=0 }) {
   const [imgErr,setImgErr]=useState(false);
   const handleAdd=(e)=>{e.stopPropagation();onAdd(p);};
@@ -300,7 +294,6 @@ function MiniCard({ product:p, T, badge, color, onAdd, cartQty=0 }) {
   );
 }
 
-// ── Home Row ──────────────────────────────────────────────────────────────────
 function HomeRow({ title, subtitle, color, products, badge, onAdd, onViewAll, T, cart=[] }) {
   const ref = useRef(null);
   return (
@@ -323,7 +316,6 @@ function HomeRow({ title, subtitle, color, products, badge, onAdd, onViewAll, T,
   );
 }
 
-// ── Filter Section ────────────────────────────────────────────────────────────
 function FilterSection({ label, children, T }) {
   return (
     <div>
@@ -343,7 +335,6 @@ function SidebarPill({ label, active, T, onClick }) {
   );
 }
 
-// ── Orders Page ───────────────────────────────────────────────────────────────
 function OrdersPage({ T, user }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -449,7 +440,6 @@ export default function StoreFront() {
   const [toasts, setToasts] = useState([]);
   const toastId = useRef(0);
 
-  // Inject CSS
   useEffect(()=>{
     const id="sf-store-css";
     if(!document.getElementById(id)){
@@ -510,7 +500,6 @@ export default function StoreFront() {
 
   const priceLabel=(v)=>"Rp "+Math.round(v).toLocaleString("id-ID");
 
-  // CSS custom properties for current theme
   const cssVars = {
     "--sf-accent": T.accent,
     "--sf-accent-soft": T.accentSoft,
@@ -518,7 +507,6 @@ export default function StoreFront() {
   };
 
   if (selectedProduct) {
-    // Count how many of this product are already in cart
     const detailCartQty = cart.filter(c => c.name === (selectedProduct.name || selectedProduct.product_name || "")).reduce((s,c)=>s+c.qty,0);
     return (
       <ProductDetailPage
@@ -561,7 +549,7 @@ export default function StoreFront() {
       </div>
 
       {/* ── HEADER ── */}
-      <header style={{position:"sticky",top:0,zIndex:100,background:T.bg+"ee",backdropFilter:"blur(14px)",borderBottom:`1.5px solid ${T.border}`,padding:"0 2rem",display:"flex",alignItems:"center",gap:16,height:66,position:"relative"}}>
+      <header style={{position:"sticky",top:0,zIndex:100,background:T.bg+"ee",backdropFilter:"blur(14px)",borderBottom:`1.5px solid ${T.border}`,padding:"0 2rem",display:"flex",alignItems:"center",gap:16,height:66}}>
         <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0,cursor:"pointer"}} onClick={()=>setView(VIEW_HOME)}>
           <div style={{width:36,height:36,borderRadius:10,background:T.accentGrad,display:"flex",alignItems:"center",justifyContent:"center"}}>
             <span style={{fontSize:18}}>✨</span>
@@ -585,7 +573,6 @@ export default function StoreFront() {
           ))}
         </nav>
 
-        {/* Search bar */}
         <div style={{flex:1,maxWidth:440,position:"relative"}}>
           <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:T.textSoft,fontSize:14,pointerEvents:"none"}}>🔍</span>
           <input
@@ -623,7 +610,6 @@ export default function StoreFront() {
               <button onClick={()=>setCartOpen(false)} style={{background:"none",border:"none",color:T.textSoft,cursor:"pointer",fontSize:20}}>✕</button>
             </div>
 
-            {/* Suggest free samples */}
             {cart.length>0&&(()=>{
               const cartTypes=new Set(cart.map(c=>c.type));
               const suggested=RAW_LOW_SELLING.filter(s=>cartTypes.has(s.product_type)&&!samples.includes(s.product_id)).slice(0,2);
@@ -690,7 +676,6 @@ export default function StoreFront() {
         {/* ── HOME VIEW ── */}
         {view===VIEW_HOME && (
           <div>
-            {/* Hero */}
             <div style={{position:"relative",overflow:"hidden",padding:"5rem 2rem 4rem",borderBottom:`1.5px solid ${T.border}`}}>
               <div style={{position:"absolute",top:-80,right:-60,width:400,height:400,borderRadius:"50%",background:`radial-gradient(circle,${T.accent}20,transparent 70%)`,pointerEvents:"none"}}/>
               <div style={{position:"absolute",bottom:-60,left:-40,width:300,height:300,borderRadius:"50%",background:`radial-gradient(circle,${T.accent}15,transparent 70%)`,pointerEvents:"none"}}/>
@@ -709,7 +694,7 @@ export default function StoreFront() {
                 </p>
                 <div style={{display:"flex",gap:12}}>
                   <button className="sf-btn" onClick={()=>setView(VIEW_CAT)} style={{padding:"13px 28px",borderRadius:30,border:"none",background:T.accentGrad,color:"#fff",fontWeight:700,fontSize:"0.95rem",cursor:"pointer",boxShadow:`0 8px 24px ${T.accent}44`}}>Shop Now →</button>
-                  <button className="sf-btn" onClick={()=>setView(VIEW_AI_ANALYZER)} style={{padding:"13px 28px",borderRadius:30,border:`2px solid ${T.accent}`,background:"transparent",color:T.accent,fontWeight:700,fontSize:"0.95rem",cursor:"pointer",boxShadow:"none",transition:"all 0.2s"}}>🤖 AI Image Analysis</button>
+                  <button className="sf-btn" onClick={()=>setView(VIEW_AI_ANALYZER)} style={{padding:"13px 28px",borderRadius:30,border:`2px solid ${T.accent}`,background:"transparent",color:T.accent,fontWeight:700,fontSize:"0.95rem",cursor:"pointer"}}>🤖 AI Image Analysis</button>
                 </div>
                 <div style={{display:"flex",gap:32,marginTop:36}}>
                   {[{n:"50K+",l:"Happy Clients"},{n:"200+",l:"Premium Brands"},{n:"99%",l:"Satisfaction"}].map(s=>(
@@ -722,7 +707,6 @@ export default function StoreFront() {
               </div>
             </div>
 
-            {/* Seasonal picks */}
             <HomeRow
               icon={sm.emoji} title={`${sm.label} — Picks for You`} subtitle="Seasonal recommendations"
               color={sm.color} T={T}
@@ -730,7 +714,8 @@ export default function StoreFront() {
               badge={{text:"⭐ SEASONAL",color:sm.color}}
               onAdd={(p)=>{addToCart({name:p.name,brand:p.brand,type:p.type,price:p.price,tier:"",effects:p.effects||"",skin:p.skin||""});toast("🛒 Added!");}}
               onViewAll={()=>setView(VIEW_CAT)}
-              cart={cart}            />
+              cart={cart}
+            />
 
             <HomeRow
               icon="🔥" title="Hot Offers — Buy 2 Get 3 FREE" subtitle="Limited-time deals on select products"
@@ -739,7 +724,8 @@ export default function StoreFront() {
               badge={{text:"🔥 BUY 2 GET 3",color:"#EF4444"}}
               onAdd={(p)=>{addToCart({name:p.name,brand:p.brand,type:p.type,price:p.price,tier:"",effects:"",skin:""});toast("🛒 Added!");}}
               onViewAll={()=>setView(VIEW_CAT)}
-              cart={cart}            />
+              cart={cart}
+            />
 
             {HOMEPAGE_SECTIONS.map(sec=>(
               <HomeRow key={sec.id} title={sec.label} subtitle={sec.subtitle} color={sec.color} T={T}
@@ -761,7 +747,6 @@ export default function StoreFront() {
         {/* ── CATALOGUE VIEW ── */}
         {view===VIEW_CAT && (
           <div style={{display:"flex",minHeight:"calc(100vh - 66px)"}}>
-            {/* Sidebar */}
             <aside style={{width:sidebarOpen?260:0,flexShrink:0,overflow:"hidden",transition:"width 0.25s ease",background:T.surface,borderRight:`1.5px solid ${T.border}`}}>
               <div style={{width:260,padding:"1.5rem",display:"flex",flexDirection:"column",gap:20,overflowY:"auto",maxHeight:"calc(100vh - 66px)",position:"sticky",top:66}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -798,7 +783,6 @@ export default function StoreFront() {
               </div>
             </aside>
 
-            {/* Main */}
             <div style={{flex:1,display:"flex",flexDirection:"column"}}>
               <div style={{padding:"1rem 1.5rem",borderBottom:`1.5px solid ${T.border}`,background:T.surface+"aa",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
                 <button className="sf-btn" onClick={()=>setSidebarOpen(p=>!p)} style={{
@@ -836,48 +820,51 @@ export default function StoreFront() {
             </div>
           </div>
         )}
+
+        {/* ── AI ANALYZER VIEW ── */}
+        {view===VIEW_AI_ANALYZER && (
+          <div style={{position:"relative",zIndex:1,padding:"2rem",maxWidth:600,margin:"0 auto",minHeight:"calc(100vh - 66px)"}}>
+            <button className="sf-btn" onClick={()=>setView(VIEW_HOME)} style={{marginBottom:20,padding:"8px 16px",borderRadius:10,border:`1.5px solid ${T.border}`,background:"transparent",color:T.textMid,fontSize:"0.85rem",cursor:"pointer"}}>← Back to Home</button>
+            <SkinSelfieAnalyzer
+              onAnalysisComplete={(result) => {
+                setAiAnalysisData(result);
+                setView(VIEW_AI_RESULTS);
+              }}
+              budget=""
+            />
+          </div>
+        )}
+
+        {/* ── AI RESULTS VIEW ── */}
+        {view===VIEW_AI_RESULTS && aiAnalysisData && (
+          <div style={{position:"relative",zIndex:1,minHeight:"calc(100vh - 66px)"}}>
+            <SkinResultsPage
+              analysisData={{
+                ok: true,
+                analysis: aiAnalysisData,
+                products: [],
+                product_count: 0,
+                model_used: "claude-sonnet-4-20250514"
+              }}
+              previewUrl={aiPreviewUrl}
+              onRetry={() => setView(VIEW_AI_ANALYZER)}
+              onClose={() => setView(VIEW_HOME)}
+            />
+          </div>
+        )}
+
+      </div>{/* end views */}
+
+      {/* ── TOASTS ── */}
+      <div style={{position:"fixed",bottom:24,right:24,zIndex:600,display:"flex",flexDirection:"column",gap:8}}>
+        {toasts.map(t=>(
+          <div key={t.id} style={{background:T.accentGrad,color:"#fff",padding:"11px 18px",borderRadius:12,fontSize:"0.82rem",fontWeight:700,boxShadow:`0 8px 24px ${T.accent}44`,maxWidth:300,animation:"fadeSlideUp 0.3s ease both"}}>{t.msg}</div>
+        ))}
       </div>
 
-      {/* ── AI ANALYZER VIEW ── */}
-      {view===VIEW_AI_ANALYZER && (
-        <div style={{position:"relative",zIndex:1,padding:"2rem",maxWidth:600,margin:"0 auto",minHeight:"calc(100vh - 66px)"}}>
-          <button className="sf-btn" onClick={()=>setView(VIEW_HOME)} style={{marginBottom:20,padding:"8px 16px",borderRadius:10,border:`1.5px solid ${T.border}`,background:"transparent",color:T.textMid,fontSize:"0.85rem",cursor:"pointer"}}>← Back to Home</button>
-          <SkinSelfieAnalyzer 
-            onAnalysisComplete={(result) => {
-              setAiAnalysisData(result);
-              setView(VIEW_AI_RESULTS);
-            }}
-            budget=""
-          />
-        </div>
-      )}
+      {/* ── SKIN REPORT GENERATOR ── */}
+      <SkinReportGenerator theme={T} user={user} chatHistory={[]} recommendedProducts={PRODUCTS.slice(0,3)} />
 
-      {/* ── AI RESULTS VIEW ── */}
-      {view===VIEW_AI_RESULTS && aiAnalysisData && (
-        <div style={{position:"relative",zIndex:1,minHeight:"calc(100vh - 66px)"}}>
-          <SkinResultsPage
-            analysisData={{
-              ok: true,
-              analysis: aiAnalysisData,
-              products: [],
-              product_count: 0,
-              model_used: "claude-sonnet-4-20250514"
-            }}
-            previewUrl={aiPreviewUrl}
-            onRetry={() => setView(VIEW_AI_ANALYZER)}
-            onClose={() => setView(VIEW_HOME)}
-          />
-        </div>
-      )}
     </div>
-
-    {/* Toasts */}
-    <div style={{position:"fixed",bottom:24,right:24,zIndex:600,display:"flex",flexDirection:"column",gap:8}}>
-      {toasts.map(t=>(
-        <div key={t.id} style={{background:T.accentGrad,color:"#fff",padding:"11px 18px",borderRadius:12,fontSize:"0.82rem",fontWeight:700,boxShadow:`0 8px 24px ${T.accent}44`,maxWidth:300,animation:"fadeSlideUp 0.3s ease both"}}>{t.msg}</div>
-      ))}
-    </div>
-
-    {/* Skin Report Generator */}
-    <SkinReportGenerator theme={T} user={user} chatHistory={[]} recommendedProducts={PRODUCTS.slice(0,3)} />
+  );
 }

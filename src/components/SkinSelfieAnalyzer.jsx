@@ -1,15 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import SkinResultsPage from "./SkinResultsPage";
 
-{stage === "products" && fullData && (
-  <SkinResultsPage
-    analysisData={fullData}
-    previewUrl={previewUrl}
-    onRetry={handleReset}
-    onClose={() => setStage("results")}
-  />
-)}
-
 const SKIN_TYPE_COLORS = {
   Oily:        { bg: "#FFF0F5", accent: "#D4537E", label: "Oily" },
   Dry:         { bg: "#F0F5FF", accent: "#5B7FD4", label: "Dry" },
@@ -98,7 +89,6 @@ const styles = `
     padding: 28px 28px 32px;
   }
 
-  /* ── Drop zone ── */
   .ssa-dropzone {
     border: 1.5px dashed var(--pink-soft);
     border-radius: 18px;
@@ -213,7 +203,6 @@ const styles = `
     color: var(--pink-deep);
   }
 
-  /* ── Preview state ── */
   .ssa-preview-wrap {
     position: relative;
     border-radius: 18px;
@@ -272,7 +261,6 @@ const styles = `
     gap: 6px;
   }
 
-  /* Scanning animation */
   .ssa-scan-ring {
     width: 100px;
     height: 100px;
@@ -282,9 +270,7 @@ const styles = `
     animation: spin 1s linear infinite;
   }
 
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .ssa-scan-label {
     color: white;
@@ -295,16 +281,9 @@ const styles = `
     letter-spacing: 0.05em;
   }
 
-  /* progress dots */
-  .ssa-dots {
-    display: flex;
-    gap: 5px;
-    align-items: center;
-  }
+  .ssa-dots { display: flex; gap: 5px; align-items: center; }
   .ssa-dots span {
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
+    width: 4px; height: 4px; border-radius: 50%;
     background: rgba(255,255,255,0.6);
     animation: dot-pulse 1.2s ease-in-out infinite;
   }
@@ -315,7 +294,6 @@ const styles = `
     40%           { opacity: 1;   transform: scale(1.2); }
   }
 
-  /* ── Analyze button ── */
   .ssa-analyze-btn {
     width: 100%;
     display: flex;
@@ -338,194 +316,98 @@ const styles = `
   .ssa-analyze-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
   .ssa-analyze-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
 
-  /* ── Results ── */
-  .ssa-results {
-    animation: fade-up 0.4s ease both;
-  }
+  .ssa-results { animation: fade-up 0.4s ease both; }
   @keyframes fade-up {
     from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  .ssa-result-header {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 20px;
-  }
+  .ssa-result-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
 
   .ssa-result-avatar {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    overflow: hidden;
-    border: 2px solid var(--border);
-    flex-shrink: 0;
+    width: 64px; height: 64px; border-radius: 50%;
+    overflow: hidden; border: 2px solid var(--border); flex-shrink: 0;
   }
-
-  .ssa-result-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
+  .ssa-result-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
   .ssa-result-info { flex: 1; }
 
   .ssa-result-label {
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text-light);
-    margin-bottom: 4px;
+    font-size: 10px; font-weight: 500; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--text-light); margin-bottom: 4px;
   }
 
   .ssa-result-skin-type {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 26px;
-    font-weight: 400;
-    color: var(--text-dark);
-    line-height: 1;
-    margin-bottom: 4px;
+    font-size: 26px; font-weight: 400; color: var(--text-dark);
+    line-height: 1; margin-bottom: 4px;
   }
 
-  .ssa-confidence {
-    font-size: 12px;
-    color: var(--text-light);
-    font-weight: 300;
-  }
-
-  .ssa-confidence strong {
-    color: var(--pink-deep);
-    font-weight: 500;
-  }
+  .ssa-confidence { font-size: 12px; color: var(--text-light); font-weight: 300; }
+  .ssa-confidence strong { color: var(--pink-deep); font-weight: 500; }
 
   .ssa-concerns-title {
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text-light);
-    margin: 0 0 10px;
+    font-size: 10px; font-weight: 500; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--text-light); margin: 0 0 10px;
   }
 
-  .ssa-concerns-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 20px;
-  }
+  .ssa-concerns-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
 
   .ssa-concern-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: var(--pink-blush);
-    border: 1px solid var(--border);
-    border-radius: 100px;
-    padding: 6px 14px;
-    font-size: 12px;
-    font-weight: 400;
-    color: var(--text-mid);
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--pink-blush); border: 1px solid var(--border);
+    border-radius: 100px; padding: 6px 14px;
+    font-size: 12px; font-weight: 400; color: var(--text-mid);
     transition: background 0.2s, border-color 0.2s;
   }
-
   .ssa-concern-chip.highlighted {
-    background: #FFF0F7;
-    border-color: var(--pink-soft);
-    color: var(--pink-deep);
+    background: #FFF0F7; border-color: var(--pink-soft); color: var(--pink-deep);
   }
 
   .ssa-tip {
     background: var(--pink-blush);
     border-left: 3px solid var(--pink-mid);
     border-radius: 0 10px 10px 0;
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    font-size: 12.5px;
-    color: var(--text-mid);
-    font-style: italic;
-    line-height: 1.55;
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 15px;
+    padding: 12px 16px; margin-bottom: 20px;
+    color: var(--text-mid); font-style: italic; line-height: 1.55;
+    font-family: 'Cormorant Garamond', serif; font-size: 15px;
   }
 
   .ssa-cta-btn {
     width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
     background: linear-gradient(135deg, var(--pink-mid) 0%, var(--pink-deep) 100%);
-    color: white;
-    border: none;
-    border-radius: 14px;
-    padding: 15px 24px;
-    font-size: 14px;
-    font-weight: 500;
-    font-family: 'DM Sans', sans-serif;
-    cursor: pointer;
-    letter-spacing: 0.02em;
-    transition: opacity 0.2s, transform 0.15s;
+    color: white; border: none; border-radius: 14px;
+    padding: 15px 24px; font-size: 14px; font-weight: 500;
+    font-family: 'DM Sans', sans-serif; cursor: pointer;
+    letter-spacing: 0.02em; transition: opacity 0.2s, transform 0.15s;
   }
   .ssa-cta-btn:hover { opacity: 0.9; transform: translateY(-1px); }
 
   .ssa-retry-btn {
-    width: 100%;
-    background: transparent;
-    border: 1.5px solid var(--border);
-    border-radius: 14px;
-    padding: 12px;
-    font-size: 13px;
-    font-weight: 400;
-    font-family: 'DM Sans', sans-serif;
-    color: var(--text-light);
-    cursor: pointer;
-    margin-top: 10px;
-    transition: border-color 0.2s, color 0.2s;
+    width: 100%; background: transparent; border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 12px; font-size: 13px; font-weight: 400;
+    font-family: 'DM Sans', sans-serif; color: var(--text-light);
+    cursor: pointer; margin-top: 10px; transition: border-color 0.2s, color 0.2s;
   }
   .ssa-retry-btn:hover { border-color: var(--pink-soft); color: var(--text-mid); }
 
   .ssa-error {
-    background: #FFF5F5;
-    border: 1px solid #FFD0D0;
-    border-radius: 12px;
-    padding: 14px 16px;
-    font-size: 13px;
-    color: #C0392B;
-    text-align: center;
-    margin-bottom: 12px;
-    font-weight: 300;
+    background: #FFF5F5; border: 1px solid #FFD0D0; border-radius: 12px;
+    padding: 14px 16px; font-size: 13px; color: #C0392B;
+    text-align: center; margin-bottom: 12px; font-weight: 300;
   }
 
-  /* ── Tips strip ── */
-  .ssa-tips-strip {
-    display: flex;
-    gap: 6px;
-    margin-top: 16px;
-  }
+  .ssa-tips-strip { display: flex; gap: 6px; margin-top: 16px; }
   .ssa-tip-pill {
-    flex: 1;
-    background: var(--pink-blush);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 8px 6px;
-    text-align: center;
-    font-size: 10px;
-    color: var(--text-mid);
-    line-height: 1.4;
-    font-weight: 300;
+    flex: 1; background: var(--pink-blush); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 6px; text-align: center;
+    font-size: 10px; color: var(--text-mid); line-height: 1.4; font-weight: 300;
   }
-  .ssa-tip-pill strong {
-    display: block;
-    font-size: 14px;
-    margin-bottom: 2px;
-  }
+  .ssa-tip-pill strong { display: block; font-size: 14px; margin-bottom: 2px; }
 `;
 
-// ─────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -536,69 +418,44 @@ function fileToBase64(file) {
   });
 }
 
-function buildSkinPrompt() {
-  return `You are an expert dermatologist AI. Analyze this facial selfie and determine the person's skin type and key concerns.
+// ── CHANGED: routes through FastAPI backend instead of calling Anthropic directly ──
+async function callClaudeVision(base64Image, budget = "") {
+  const BACKEND = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/$/, "");
 
-Respond ONLY with a valid JSON object — no explanation, no markdown, no extra text.
-
-Required format:
-{
-  "skin_type": "<one of: Oily | Dry | Combination | Sensitive | Normal>",
-  "concerns": ["<concern1>", "<concern2>"],
-  "confidence": <0.0 to 1.0>,
-  "tip": "<one personalized sentence of skincare advice based on what you see>"
-}
-
-Valid concerns (pick all that apply from this exact list):
-Acne, Brightening, Anti-Aging, Pore-Care, Moisturizing, Soothing
-
-Base your analysis on visible cues: skin texture, shine, visible pores, redness, dryness, fine lines, uneven tone, blemishes.
-If image quality is too low or face is not clearly visible, still return your best estimate with confidence below 0.5.`;
-}
-
-async function callClaudeVision(base64Image) {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("VITE_ANTHROPIC_API_KEY not configured. Please add it to your .env file.");
-  }
-  
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetch(`${BACKEND}/api/analyze-skin`, {
     method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [{
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: { type: "base64", media_type: "image/jpeg", data: base64Image },
-          },
-          { type: "text", text: buildSkinPrompt() },
-        ],
-      }],
+      image_data: base64Image,
+      media_type: "image/jpeg",
+      budget,
+      top_n: 15,
     }),
   });
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `API error ${response.status}`);
+    throw new Error(err?.detail || `Server error ${response.status}`);
   }
 
   const data = await response.json();
-  const raw  = data.content?.find(b => b.type === "text")?.text || "";
-  const clean = raw.replace(/```json|```/g, "").trim();
-  return JSON.parse(clean);
+
+  // Flatten into the shape the component expects, but also carry
+  // the products payload forward for the SkinResultsPage stage.
+  return {
+    skin_type:       data.analysis?.skin_type  ?? "Normal",
+    concerns:        data.analysis?.concerns   ?? [],
+    confidence:      data.analysis?.confidence ?? 0.75,
+    tip:             data.analysis?.tip        ?? "",
+    // products payload (prefixed _ so they don't clash with analysis fields)
+    _products:        data.products        ?? [],
+    _low_confidence:  data.low_confidence  ?? false,
+    _fallback_used:   data.fallback_used   ?? false,
+    _warnings:        data.warnings        ?? [],
+  };
 }
 
-// ─────────────────────────────────────────────────────────────
-// Sub-components
-// ─────────────────────────────────────────────────────────────
+// ── Sub-components ────────────────────────────────────────────
 
 function UploadZone({ onFile, onCamera }) {
   const [dragOver, setDragOver] = useState(false);
@@ -629,9 +486,7 @@ function UploadZone({ onFile, onCamera }) {
         <div className="ssa-drop-icon">📸</div>
         <p className="ssa-drop-title">Drop your selfie here</p>
         <p className="ssa-drop-sub">JPG, PNG or WEBP — clear face, good lighting</p>
-        <button className="ssa-drop-btn" type="button">
-          ✦ Choose photo
-        </button>
+        <button className="ssa-drop-btn" type="button">✦ Choose photo</button>
       </div>
 
       <div className="ssa-divider">
@@ -645,7 +500,7 @@ function UploadZone({ onFile, onCamera }) {
       </button>
 
       <div className="ssa-tips-strip">
-        {[["💡","Good lighting"], ["😐","Neutral face"], ["🔍","No filters"]].map(([icon, txt]) => (
+        {[["💡","Good lighting"],["😐","Neutral face"],["🔍","No filters"]].map(([icon, txt]) => (
           <div key={txt} className="ssa-tip-pill">
             <strong>{icon}</strong>{txt}
           </div>
@@ -659,12 +514,14 @@ function CameraCapture({ onCapture, onCancel }) {
   const videoRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
+  const streamRef = useRef(null);
 
   const start = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 1280 } },
       });
+      streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => setReady(true);
@@ -675,7 +532,7 @@ function CameraCapture({ onCapture, onCancel }) {
   }, []);
 
   const stop = useCallback(() => {
-    videoRef.current?.srcObject?.getTracks().forEach(t => t.stop());
+    streamRef.current?.getTracks().forEach(t => t.stop());
   }, []);
 
   const capture = useCallback(() => {
@@ -690,11 +547,7 @@ function CameraCapture({ onCapture, onCancel }) {
     }, "image/jpeg", 0.92);
   }, [stop, onCapture]);
 
-  // Start camera on mount
-  useState(() => { start(); return stop; });
-  // clean-up on unmount
-  const mounted = useRef(false);
-  if (!mounted.current) { mounted.current = true; start(); }
+  useRef((() => { start(); })());
 
   if (error) return (
     <div>
@@ -711,7 +564,7 @@ function CameraCapture({ onCapture, onCancel }) {
           autoPlay
           playsInline
           muted
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transform: "scaleX(-1)" }}
+          style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", transform:"scaleX(-1)" }}
         />
         {!ready && (
           <div className="ssa-preview-overlay visible">
@@ -720,7 +573,7 @@ function CameraCapture({ onCapture, onCancel }) {
           </div>
         )}
       </div>
-      <button className="ssa-analyze-btn" style={{ marginTop: 14 }} onClick={capture} disabled={!ready}>
+      <button className="ssa-analyze-btn" style={{ marginTop:14 }} onClick={capture} disabled={!ready}>
         📸 Capture &amp; Analyse
       </button>
       <button className="ssa-retry-btn" onClick={() => { stop(); onCancel(); }}>← Back</button>
@@ -728,9 +581,8 @@ function CameraCapture({ onCapture, onCancel }) {
   );
 }
 
-function PreviewAnalyze({ file, previewUrl, analyzing, onAnalyze, onRetake }) {
+function PreviewAnalyze({ previewUrl, analyzing, onAnalyze, onRetake }) {
   const [hovered, setHovered] = useState(false);
-
   return (
     <div>
       <div
@@ -748,22 +600,14 @@ function PreviewAnalyze({ file, previewUrl, analyzing, onAnalyze, onRetake }) {
             <>
               <div className="ssa-scan-ring"/>
               <span className="ssa-scan-label">Analysing your skin</span>
-              <div className="ssa-dots">
-                <span/><span/><span/>
-              </div>
+              <div className="ssa-dots"><span/><span/><span/></div>
             </>
           ) : (
-            <button className="ssa-preview-change" onClick={onRetake}>
-              ↺ Retake
-            </button>
+            <button className="ssa-preview-change" onClick={onRetake}>↺ Retake</button>
           )}
         </div>
       </div>
-      <button
-        className="ssa-analyze-btn"
-        onClick={onAnalyze}
-        disabled={analyzing}
-      >
+      <button className="ssa-analyze-btn" onClick={onAnalyze} disabled={analyzing}>
         {analyzing ? "Analysing…" : "✦ Analyse My Skin"}
       </button>
     </div>
@@ -791,9 +635,7 @@ function Results({ result, previewUrl, onRetry, onViewProducts }) {
         </div>
       </div>
 
-      {result.tip && (
-        <div className="ssa-tip">"{result.tip}"</div>
-      )}
+      {result.tip && <div className="ssa-tip">"{result.tip}"</div>}
 
       <p className="ssa-concerns-title">Detected concerns</p>
       <div className="ssa-concerns-grid">
@@ -816,17 +658,16 @@ function Results({ result, previewUrl, onRetry, onViewProducts }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// Main component
-// ─────────────────────────────────────────────────────────────
+// ── Main component ─────────────────────────────────────────────
 
 export default function SkinSelfieAnalyzer({ onAnalysisComplete, budget = "" }) {
-  const [stage, setStage]         = useState("upload");   // upload | camera | preview | results
-  const [file, setFile]           = useState(null);
+  const [stage, setStage]           = useState("upload");
+  const [file, setFile]             = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
-  const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult]       = useState(null);
-  const [error, setError]         = useState("");
+  const [analyzing, setAnalyzing]   = useState(false);
+  const [result, setResult]         = useState(null);
+  const [fullData, setFullData]     = useState(null);
+  const [error, setError]           = useState("");
 
   const handleFile = useCallback(f => {
     setFile(f);
@@ -835,48 +676,69 @@ export default function SkinSelfieAnalyzer({ onAnalysisComplete, budget = "" }) 
     setStage("preview");
   }, []);
 
+  // ── CHANGED: passes budget to callClaudeVision ──
   const handleAnalyze = useCallback(async () => {
     if (!file) return;
     setAnalyzing(true);
     setError("");
     try {
       const base64 = await fileToBase64(file);
-      const data   = await callClaudeVision(base64);
+      const data   = await callClaudeVision(base64, budget);
       setResult(data);
+      setFullData(data);
       setStage("results");
+      if (onAnalysisComplete) onAnalysisComplete(data);
     } catch (e) {
       setError(e.message || "Something went wrong. Please try again.");
     } finally {
       setAnalyzing(false);
     }
-  }, [file]);
+  }, [file, budget, onAnalysisComplete]);
 
   const handleReset = useCallback(() => {
     setStage("upload");
     setFile(null);
-    setPreviewUrl("");
     setResult(null);
+    setFullData(null);
     setError("");
     if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl("");
   }, [previewUrl]);
 
-  const handleViewProducts = useCallback(r => {
-    // Pass analysis result up to parent (e.g. your main app / recommendation page)
-    if (onAnalysisComplete) {
-      onAnalysisComplete({
-        skin_type: r.skin_type,
-        concerns:  r.concerns,
-        budget,
-      });
-    }
-  }, [onAnalysisComplete, budget]);
+  const handleViewProducts = useCallback(() => {
+    setStage("products");
+  }, []);
+
+  // ── Products stage — CHANGED: passes real products from server response ──
+  if (stage === "products" && fullData) {
+    return (
+      <SkinResultsPage
+        analysisData={{
+          ok:             true,
+          analysis: {
+            skin_type:  fullData.skin_type,
+            concerns:   fullData.concerns,
+            confidence: fullData.confidence,
+            tip:        fullData.tip,
+          },
+          products:       fullData._products       ?? [],
+          product_count:  fullData._products?.length ?? 0,
+          low_confidence: fullData._low_confidence  ?? false,
+          fallback_used:  fullData._fallback_used   ?? false,
+          warnings:       fullData._warnings        ?? [],
+        }}
+        previewUrl={previewUrl}
+        onRetry={handleReset}
+        onClose={() => setStage("results")}
+      />
+    );
+  }
 
   return (
     <>
       <style>{styles}</style>
       <div className="ssa-root">
         <div className="ssa-card">
-
           <div className="ssa-header">
             <p className="ssa-header-eyebrow">AI Skin Analysis</p>
             <h2 className="ssa-header-title">Know your <em>skin</em></h2>
@@ -905,7 +767,6 @@ export default function SkinSelfieAnalyzer({ onAnalysisComplete, budget = "" }) 
 
             {stage === "preview" && (
               <PreviewAnalyze
-                file={file}
                 previewUrl={previewUrl}
                 analyzing={analyzing}
                 onAnalyze={handleAnalyze}
@@ -922,31 +783,8 @@ export default function SkinSelfieAnalyzer({ onAnalysisComplete, budget = "" }) 
               />
             )}
           </div>
-
         </div>
       </div>
     </>
   );
 }
-
-// ─────────────────────────────────────────────────────────────
-// Usage example
-// ─────────────────────────────────────────────────────────────
-//
-// import SkinSelfieAnalyzer from "./SkinSelfieAnalyzer";
-//
-// function App() {
-//   const handleResult = ({ skin_type, concerns, budget }) => {
-//     // These map directly into get_filtered_recommendations()
-//     console.log("Skin type:", skin_type);   // e.g. "Oily"
-//     console.log("Concerns:",  concerns);    // e.g. ["Acne", "Brightening"]
-//     // Now call your /api/report endpoint or navigate to the products page
-//   };
-//
-//   return (
-//     <SkinSelfieAnalyzer
-//       onAnalysisComplete={handleResult}
-//       budget="Under Rs 100"
-//     />
-//   );
-// }

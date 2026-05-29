@@ -1,5 +1,6 @@
 from fastapi.responses import StreamingResponse
 import io
+from dotenv import load_dotenv
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -15,6 +16,7 @@ import sqlite3
 import json
 import pandas as pd
 from datetime import datetime, timezone, timedelta
+load_dotenv()
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
