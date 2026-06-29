@@ -25,7 +25,7 @@ export default function Sidebar({ page, setPage, user, onLogout }) {
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
         }}>
-          ✨ GlowIQ
+           GlowIQ
         </h1>
         <p style={{ fontSize: "0.68rem", color: C.muted, marginTop: 2, textTransform: "uppercase", letterSpacing: "0.5px" }}>
           Admin Dashboard

@@ -8,7 +8,7 @@ import SkinReportGenerator from "../components/SkinReportGenerator";
 import SkinSelfieAnalyzer from "../components/SkinSelfieAnalyzer";
 import SkinResultsPage from "../components/SkinResultsPage";
 
-// ── PaymentGateway Theme (same THEMES object) ─────────────────────────────────
+// ── PaymentGateway Theme ──────────────────────────────────────────────────────
 const THEMES = {
   blossom: {
     name: "Blossom",
@@ -147,6 +147,9 @@ const PRODUCTS = ALL_PRODUCTS.map((p, i) => ({
   skin: (p.skintype || p.skin || "").trim(),
   img: p.picture_src || p.img || "",
   description: p.description || "",
+  rating: p.rating ?? null,
+  reviewCount: p.review_count ?? p.reviewCount ?? null,
+  badge: p.badge || (p.derm_approved ? "Derm Approved" : null),
 }));
 
 const TYPES  = ["All","Serum","Toner","Moisturizer","Sunscreen","Face Wash"];
@@ -177,6 +180,32 @@ const VIEW_CAT = "catalogue";
 const VIEW_ORDERS = "orders";
 const VIEW_AI_ANALYZER = "ai-analyzer";
 const VIEW_AI_RESULTS = "ai-results";
+
+// ── Hero media — place 0.mp4 in your project's public/ folder ────────────────
+const HERO_MEDIA = {
+  type: "video",       // "image" | "video"
+  src: "/0.mp4",       // served from public/0.mp4 via Vite
+  poster: "",          // optional poster frame for the video
+};
+
+// ── Shop-by-category strip ────────────────────────────────────────────────────
+// Place images in public/categories/ — e.g. public/categories/sunscreen.png
+const CATEGORIES = [
+  { label: "Sunscreen",    type: "Sunscreen",   icon: null, img: "/Cate/sunscreen.jpg" },
+  { label: "Serums",       type: "Serum",       icon: null, img: "/Cate/serum.jpg" },
+  { label: "Moisturizers", type: "Moisturizer", icon: null, img: "/Cate/moistuizer.jpg" },
+  { label: "Toners",       type: "Toner",       icon: null, img: "/Cate/toner.jpg" },
+  { label: "Face Wash",    type: "Face Wash",   icon: null, img: "/Cate/face wash.jpg" },
+];
+
+// ── Build Your Routine ────────────────────────────────────────────────────────
+const ROUTINE_STEPS = [
+  { n: 1, title: "Cleanse",    desc: "Remove dirt & oil",    icon: null, img: "/Cate/cleanser.jpg" },
+  { n: 2, title: "Treat",      desc: "Target concerns",      icon: null, img: "/Cate/sirum.jpg" },
+  { n: 3, title: "Moisturize", desc: "Lock in hydration",    icon: null, img: "/Cate/moist.jpg" },
+  { n: 4, title: "Protect",    desc: "Shield with SPF",      icon: null, img: "/Cate/sun-s.jpg" },
+];
+
 
 function useThemeState() {
   const [themeName, setThemeName] = useState("blossom");
@@ -248,11 +277,19 @@ function ProdCard({ product:p, T, isOffer, onAddToCart, onProductClick, cartQty=
       cursor:"pointer", position:"relative",
     }}>
       {isOffer && <div style={{position:"absolute",top:10,right:10,background:"#ef4444",color:"#fff",fontSize:"0.6rem",fontWeight:800,padding:"3px 8px",borderRadius:6}}>🔥 BUY 2 GET 3</div>}
+      {p.badge && <div style={{position:"absolute",top:10,left:10,background:"#10b98122",color:"#0d9468",fontSize:"0.6rem",fontWeight:800,padding:"3px 8px",borderRadius:6,border:"1px solid #10b98144"}}>✓ {p.badge}</div>}
       <div style={{height:140,borderRadius:10,overflow:"hidden",background:T.accentSoft,display:"flex",alignItems:"center",justifyContent:"center"}}>
         {p.img&&!imgErr ? <img src={p.img} alt={p.name} onError={()=>setImgErr(true)} style={{width:"100%",height:"100%",objectFit:"cover"}}/> : <span style={{fontSize:40}}>🧴</span>}
       </div>
       <div style={{color:T.textSoft,fontSize:"0.68rem",textTransform:"uppercase",letterSpacing:0.5}}>{p.brand}</div>
       <div style={{color:T.text,fontWeight:600,fontSize:"0.85rem",lineHeight:1.3,flex:1}}>{p.name.slice(0,48)}{p.name.length>48?"…":""}</div>
+      {p.rating!=null && (
+        <div style={{display:"flex",alignItems:"center",gap:4,fontSize:"0.72rem",color:T.textSoft}}>
+          <span style={{color:"#f59e0b"}}>★</span>
+          <span style={{color:T.text,fontWeight:700}}>{Number(p.rating).toFixed(1)}</span>
+          {p.reviewCount!=null && <span>· {p.reviewCount}</span>}
+        </div>
+      )}
       {p.type && <span style={{background:T.accentSoft,color:T.accent,padding:"3px 10px",borderRadius:20,fontSize:"0.7rem",fontWeight:600,alignSelf:"flex-start"}}>{p.type}</span>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:"auto",paddingTop:8,borderTop:`1px solid ${T.border}`}}>
         <span style={{fontWeight:800,fontSize:"0.95rem",background:T.accentGrad,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
@@ -283,6 +320,13 @@ function MiniCard({ product:p, T, badge, color, onAdd, cartQty=0 }) {
       <div style={{padding:"10px 12px 12px",flex:1,display:"flex",flexDirection:"column",gap:4}}>
         <div style={{color:T.textSoft,fontSize:"0.62rem",textTransform:"uppercase",letterSpacing:0.4}}>{p.brand||""}</div>
         <div style={{color:T.text,fontWeight:600,fontSize:"0.78rem",lineHeight:1.3,flex:1}}>{(p.name||"").slice(0,42)}{(p.name||"").length>42?"…":""}</div>
+        {p.rating!=null && (
+          <div style={{display:"flex",alignItems:"center",gap:3,fontSize:"0.66rem",color:T.textSoft}}>
+            <span style={{color:"#f59e0b"}}>★</span>
+            <span style={{color:T.text,fontWeight:700}}>{Number(p.rating).toFixed(1)}</span>
+            {p.reviewCount!=null && <span>· {p.reviewCount}</span>}
+          </div>
+        )}
         <div style={{fontWeight:800,fontSize:"0.85rem",background:T.accentGrad,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
           {p.price?.trim() || "–"}
         </div>
@@ -316,6 +360,62 @@ function HomeRow({ title, subtitle, color, products, badge, onAdd, onViewAll, T,
   );
 }
 
+function CategoryStrip({ T, onSelect }) {
+  return (
+    <div style={{padding:"2rem 2rem 0.5rem"}}>
+      <h3 style={{color:T.text,fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:"1.2rem",marginBottom:18}}>Shop by Category</h3>
+      <div style={{display:"flex",justifyContent:"space-evenly",overflowX:"auto",paddingBottom:8,scrollbarWidth:"none"}}>
+        {CATEGORIES.map(c=>(
+          <div key={c.type} onClick={()=>onSelect(c.type)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:40,cursor:"pointer",flexShrink:0,width:210}}>
+            <div className="sf-card" style={{width:200,height:200,borderRadius:"50%",background:T.accentSoft,border:`1.5px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,overflow:"hidden"}}>
+              {c.img
+                ? <img
+                    src={c.img}
+                    alt={c.label}
+                    style={{width:"100%",height:"100%",objectFit:"cover"}}
+                    onError={(e)=>{ e.target.style.display="none"; e.target.nextSibling.style.display="flex"; }}
+                  />
+                : null
+              }
+              <span style={{display: c.img ? "none" : "flex", alignItems:"center", justifyContent:"center", width:"100%", height:"100%"}}>{c.icon}</span>
+            </div>
+            <span style={{color:T.textMid,fontSize:"0.75rem",fontWeight:600,textAlign:"center"}}>{c.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RoutineSteps({ T }) {
+  return (
+    <div style={{padding:"3rem 2rem",borderTop:`1.5px solid ${T.border}`,borderBottom:`1.5px solid ${T.border}`}}>
+      <h3 style={{color:T.text,fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:"1.3rem",marginBottom:28,textAlign:"center"}}>Build Your Routine</h3>
+      <div style={{display:"flex",gap:20,justifyContent:"center",flexWrap:"wrap"}}>
+        {ROUTINE_STEPS.map(s=>(
+          <div key={s.n} style={{flex:"1 1 180px",maxWidth:200,textAlign:"center"}}>
+            <div style={{width:150,height:150,margin:"0 auto 12px",borderRadius:"50%",background:T.accentSoft,border:`1.5px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,position:"relative",overflow:"hidden"}}>
+  {s.img
+    ? <img
+        src={s.img}
+        alt={s.title}
+        style={{width:"100%",height:"100%",objectFit:"cover"}}
+        onError={(e)=>{ e.target.style.display="none"; e.target.nextSibling.style.display="flex"; }}
+      />
+    : null
+  }
+  <span style={{display: s.img ? "none" : "flex", alignItems:"center", justifyContent:"center", width:"100%", height:"100%"}}>{s.icon}</span>
+  <span style={{position:"absolute",top:-4,right:-4,width:24,height:24,borderRadius:"50%",background:T.accentGrad,color:"#fff",fontSize:"0.7rem",fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",zIndex:2}}>{s.n}</span>
+</div>
+            <div style={{color:T.text,fontWeight:700,fontSize:"0.95rem",marginBottom:4}}>{s.title}</div>
+            <div style={{color:T.textSoft,fontSize:"0.75rem"}}>{s.desc}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FilterSection({ label, children, T }) {
   return (
     <div>
@@ -324,6 +424,7 @@ function FilterSection({ label, children, T }) {
     </div>
   );
 }
+
 function SidebarPill({ label, active, T, onClick }) {
   return (
     <button onClick={onClick} style={{
@@ -676,36 +777,72 @@ export default function StoreFront() {
         {/* ── HOME VIEW ── */}
         {view===VIEW_HOME && (
           <div>
+            {/* Hero */}
             <div style={{position:"relative",overflow:"hidden",padding:"5rem 2rem 4rem",borderBottom:`1.5px solid ${T.border}`}}>
               <div style={{position:"absolute",top:-80,right:-60,width:400,height:400,borderRadius:"50%",background:`radial-gradient(circle,${T.accent}20,transparent 70%)`,pointerEvents:"none"}}/>
               <div style={{position:"absolute",bottom:-60,left:-40,width:300,height:300,borderRadius:"50%",background:`radial-gradient(circle,${T.accent}15,transparent 70%)`,pointerEvents:"none"}}/>
-              <div style={{maxWidth:680,position:"relative"}}>
-                <div style={{display:"inline-flex",alignItems:"center",gap:8,background:T.accentSoft,border:`1px solid ${T.border}`,borderRadius:20,padding:"5px 14px",marginBottom:20}}>
-                  <span>{sm.emoji}</span>
-                  <span style={{color:T.accent,fontSize:"0.75rem",fontWeight:700}}>{sm.label} Collection</span>
+              <div style={{display:"flex",alignItems:"center",gap:48,flexWrap:"wrap",position:"relative"}}>
+
+                {/* Left copy */}
+                <div style={{flex:"1 1 360px",minWidth:300,position:"relative"}}>
+                  <div style={{display:"inline-flex",alignItems:"center",gap:8,background:T.accentSoft,border:`1px solid ${T.border}`,borderRadius:20,padding:"5px 14px",marginBottom:20}}>
+                    <span>{sm.emoji}</span>
+                    <span style={{color:T.accent,fontSize:"0.75rem",fontWeight:700}}>{sm.label} Collection</span>
+                  </div>
+                  <h1 style={{fontSize:"3rem",fontWeight:900,lineHeight:1.1,margin:"0 0 16px",color:T.text,fontFamily:"'Playfair Display',serif"}}>
+                    Bloom Your{" "}
+                    <span style={{background:T.accentGrad,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Glow</span>{" "}
+                    with Dup Glow
+                  </h1>
+                  <p style={{color:T.textSoft,fontSize:"1rem",lineHeight:1.6,marginBottom:28,maxWidth:500}}>
+                    Discover personalized skincare — {ALL_PRODUCTS.length.toLocaleString()} curated products, intelligent recommendations.
+                  </p>
+                  <div style={{display:"flex",gap:12}}>
+                    <button className="sf-btn" onClick={()=>setView(VIEW_CAT)} style={{padding:"13px 28px",borderRadius:30,border:"none",background:T.accentGrad,color:"#fff",fontWeight:700,fontSize:"0.95rem",cursor:"pointer",boxShadow:`0 8px 24px ${T.accent}44`}}>Shop Now →</button>
+                    <button className="sf-btn" onClick={()=>setView(VIEW_AI_ANALYZER)} style={{padding:"13px 28px",borderRadius:30,border:`2px solid ${T.accent}`,background:"transparent",color:T.accent,fontWeight:700,fontSize:"0.95rem",cursor:"pointer"}}>🤖 AI Image Analysis</button>
+                  </div>
+                  <div style={{display:"flex",gap:32,marginTop:36}}>
+                    {[{n:"50K+",l:"Happy Clients"},{n:"200+",l:"Premium Brands"},{n:"99%",l:"Satisfaction"}].map(s=>(
+                      <div key={s.l}>
+                        <div style={{color:T.text,fontWeight:800,fontSize:"1.5rem",fontFamily:"'Playfair Display',serif"}}>{s.n}</div>
+                        <div style={{color:T.textSoft,fontSize:"0.72rem",marginTop:2}}>{s.l.toUpperCase()}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <h1 style={{fontSize:"3rem",fontWeight:900,lineHeight:1.1,margin:"0 0 16px",color:T.text,fontFamily:"'Playfair Display',serif"}}>
-                  Bloom Your{" "}
-                  <span style={{background:T.accentGrad,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Glow</span>{" "}
-                  with Dup Glow
-                </h1>
-                <p style={{color:T.textSoft,fontSize:"1rem",lineHeight:1.6,marginBottom:28,maxWidth:500}}>
-                  Discover personalized skincare — {ALL_PRODUCTS.length.toLocaleString()} curated products, intelligent recommendations.
-                </p>
-                <div style={{display:"flex",gap:12}}>
-                  <button className="sf-btn" onClick={()=>setView(VIEW_CAT)} style={{padding:"13px 28px",borderRadius:30,border:"none",background:T.accentGrad,color:"#fff",fontWeight:700,fontSize:"0.95rem",cursor:"pointer",boxShadow:`0 8px 24px ${T.accent}44`}}>Shop Now →</button>
-                  <button className="sf-btn" onClick={()=>setView(VIEW_AI_ANALYZER)} style={{padding:"13px 28px",borderRadius:30,border:`2px solid ${T.accent}`,background:"transparent",color:T.accent,fontWeight:700,fontSize:"0.95rem",cursor:"pointer"}}>🤖 AI Image Analysis</button>
-                </div>
-                <div style={{display:"flex",gap:32,marginTop:36}}>
-                  {[{n:"50K+",l:"Happy Clients"},{n:"200+",l:"Premium Brands"},{n:"99%",l:"Satisfaction"}].map(s=>(
-                    <div key={s.l}>
-                      <div style={{color:T.text,fontWeight:800,fontSize:"1.5rem",fontFamily:"'Playfair Display',serif"}}>{s.n}</div>
-                      <div style={{color:T.textSoft,fontSize:"0.72rem",marginTop:2}}>{s.l.toUpperCase()}</div>
+
+                {/* Right — Hero media */}
+                <div style={{flex:"1 1 320px",minWidth:400,maxWidth:600,height:500,borderRadius:10,overflow:"hidden",position:"relative",background:T.accentSoft,border:`1.5px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {HERO_MEDIA.src ? (
+                    HERO_MEDIA.type === "video" ? (
+                      <video
+                        src={HERO_MEDIA.src}
+                        poster={HERO_MEDIA.poster || undefined}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        controls={false}
+                        disablePictureInPicture
+                        controlsList="nodownload nofullscreen noremoteplayback"
+                        style={{width:"100%",height:"100%",objectFit:"cover",display:"block",pointerEvents:"none"}}
+                      />
+                    ) : (
+                      <img src={HERO_MEDIA.src} alt="GlowIQ" style={{width:"100%",height:"100%",objectFit:"cover"}} />
+                    )
+                  ) : (
+                    <div style={{textAlign:"center",color:T.textSoft,padding:24}}>
+                      <div style={{fontSize:40,marginBottom:10}}>📸</div>
+                      <div style={{fontSize:"0.85rem",fontWeight:700,color:T.textMid}}>Drop your model photo or video here</div>
+                      <div style={{fontSize:"0.72rem",marginTop:6}}>Set HERO_MEDIA.src near the top of this file</div>
                     </div>
-                  ))}
+                  )}
                 </div>
+
               </div>
             </div>
+
+            <CategoryStrip T={T} onSelect={(type)=>{setTypeFilter(type);setView(VIEW_CAT);}} />
 
             <HomeRow
               icon={sm.emoji} title={`${sm.label} — Picks for You`} subtitle="Seasonal recommendations"
@@ -726,6 +863,8 @@ export default function StoreFront() {
               onViewAll={()=>setView(VIEW_CAT)}
               cart={cart}
             />
+
+            <RoutineSteps T={T} />
 
             {HOMEPAGE_SECTIONS.map(sec=>(
               <HomeRow key={sec.id} title={sec.label} subtitle={sec.subtitle} color={sec.color} T={T}

@@ -28,6 +28,8 @@ try:
         record_click,
         init_click_db,
         get_filtered_recommendations,
+        build_embeddings,          # FIX #1
+        refresh_sell_probabilities, # FIX #3
     )
 except ImportError as e:
     raise RuntimeError(
@@ -74,6 +76,10 @@ try:
     print(f"Loading data from: {CSV_PATH}")
     df = load_data(CSV_PATH)
     print(f"Loaded {len(df)} products successfully")
+    df = refresh_sell_probabilities(df)   # FIX #3: override CSV sell probabilities with real orders
+    print("Sell probabilities refreshed from orders table (or kept from CSV)")
+    build_embeddings(df)                  # FIX #1: build semantic embeddings (no-op if model unavailable)
+    print("Semantic embeddings ready (or keyword fallback active)")
 except FileNotFoundError:
     raise RuntimeError(
         "\n\nERROR: Skin_Care.csv not found!\n"
@@ -98,7 +104,8 @@ def init_auth_db():
     c = conn.cursor()
 
     c.execute("""
-        CREATE TABLE IF NOT EXISTS users (
+        CREATE TABLE IF NOT EXISTS users
+        (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
@@ -530,17 +537,19 @@ def admin_get_orders(admin_email: str = "", admin_password: str = ""):
 # ── Personalised Recommendations for Report ──────────────────────────────────────
 
 class FilterPayload(BaseModel):
-    skinType: str = ""
-    concerns: list = []
-    budget: str = ""
-    top_n: int = 50
+    skinType:   str  = ""
+    concerns:   list = []
+    budget:     str  = ""
+    top_n:      int  = 50
+    session_id: str  = ""   # FIX #2: wire click history into scoring
 
 
 @app.post("/api/report/recommendations")
 def get_report_recommendations(body: FilterPayload):
     """
     Returns personalised product list filtered by skin type, concerns, and budget.
-    Called by SkinReportGenerator before generating the PDF.
+    FIX #2: session_id passed to scoring so click history boosts ranking.
+    FIX #6: budget_relaxed flag returned so frontend can show a warning.
     """
     try:
         results = get_filtered_recommendations(
@@ -549,22 +558,56 @@ def get_report_recommendations(body: FilterPayload):
             concerns=body.concerns,
             budget=body.budget,
             top_n=body.top_n,
+            session_id=body.session_id,
         )
-        # Convert to clean dicts — replace NaN with None so JSON serialises cleanly
+        # Extract internal flags before serialising
+        budget_relaxed = (
+            "_budget_relaxed" in results.columns and results["_budget_relaxed"].any()
+        )
+        skip_cols = {"_budget_relaxed"}
+
         results = results.replace([float("inf"), float("-inf")], None)
         results = results.where(pd.notnull(results), None)
         records = []
         for row in results.to_dict("records"):
             clean = {}
             for k, v in row.items():
+                if k in skip_cols:
+                    continue
                 if isinstance(v, float) and (v != v or v == float("inf") or v == float("-inf")):
                     clean[k] = None
                 else:
                     clean[k] = v
             records.append(clean)
-        return {"ok": True, "count": len(records), "products": records}
+        return {
+            "ok": True,
+            "count": len(records),
+            "products": records,
+            "budget_relaxed": budget_relaxed,   # FIX #6
+        }
     except Exception as e:
         print(f"Recommendations error: {str(e)}", flush=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# FIX #4: single source of truth — frontend fetches products from backend
+@app.get("/api/products")
+def list_products():
+    """
+    Returns the full product catalog from the live CSV-loaded DataFrame.
+    Frontend should call this instead of importing src/data/products.js static array.
+    """
+    try:
+        cols = [
+            "product_id", "product_name", "brand", "product_type",
+            "price", "price_num", "picture_src", "skintype",
+            "notable_effects", "description", "low_sell_probability",
+        ]
+        available = [c for c in cols if c in df.columns]
+        records = df[available].copy()
+        records = records.where(pd.notnull(records), None)
+        return {"products": records.to_dict("records")}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 

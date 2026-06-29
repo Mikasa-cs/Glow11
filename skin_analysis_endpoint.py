@@ -1,15 +1,30 @@
-# skin_analysis_endpoint.py
+# skin_analysis_endpoint.py  —  Groq / Llama 4 Scout edition
 # ─────────────────────────────────────────────────────────────────────────────
-# Drop this file into your glow10 folder alongside server.py, then add
-# one line to server.py to include the router (shown at the bottom).
+# FREE API — uses Groq (meta-llama/llama-4-scout-17b-16e-instruct)
+# No credit card. Get your free key at: https://console.groq.com
 #
-# What this file adds:
-#   POST /api/analyze-skin   ← accepts a base64 image, calls Claude vision,
-#                               returns skin_type + concerns + confidence + tip
-#                               + ready-to-use filtered product recommendations
+# Key differences from the Anthropic version:
+#   • Uses openai SDK pointed at Groq base URL (fully compatible)
+#   • response_format={"type":"json_object"} — guaranteed valid JSON back
+#   • Image passed as image_url with full data:image/...;base64,... string
+#   • Error types: openai.AuthenticationError, openai.RateLimitError, etc.
 #
-# Dependencies (already in your server.py requirements):
-#   pip install fastapi anthropic pydantic
+# Add to server.py:
+#   from skin_analysis_endpoint import router as skin_router
+#   app.include_router(skin_router)
+#
+# Install:
+#   pip install openai        ← Groq is fully OpenAI SDK compatible
+#
+# Set env var:
+#   Windows PowerShell:  $env:GROQ_API_KEY = "gsk_..."
+#   Windows CMD:         set GROQ_API_KEY=gsk_...
+#   .env file:           GROQ_API_KEY=gsk_...
+#
+# Free tier limits (as of 2026):
+#   • 30 requests/minute
+#   • 14,400 requests/day
+#   • No credit card required
 # ─────────────────────────────────────────────────────────────────────────────
 
 import os
@@ -19,117 +34,72 @@ import base64
 import logging
 from typing import Optional
 
-import anthropic
+import openai                           # pip install openai  (works with Groq)
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 
-# ── Import your existing engine ───────────────────────────────────────────────
-try:
-    from recommendation_engine import (
-        load_data,
-        get_filtered_recommendations,
-    )
-except ImportError as e:
-    raise RuntimeError(
-        f"\n\n❌ Could not import recommendation_engine.py\n"
-        f"   Error: {e}\n"
-        "   Make sure skin_analysis_endpoint.py is in the same folder.\n"
-    )
+from recommendation_engine import load_data, get_filtered_recommendations
+from skin_vision_prompt import get_prompt, GROQ_MODEL, GROQ_BASE_URL
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter()
 
-# ── Valid values — must match recommendation_engine.py exactly ────────────────
+# ── Valid values — mirror recommendation_engine.py ────────────────────────────
 
 VALID_SKIN_TYPES = {"Oily", "Dry", "Combination", "Sensitive", "Normal"}
+VALID_CONCERNS   = {"Acne", "Brightening", "Anti-Aging", "Pore-Care", "Moisturizing", "Soothing"}
+VALID_BUDGETS    = {"Under Rs 100", "Rs 100–200", "Rs 200–500", "Rs 500+"}
+VALID_MEDIA_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"}
 
-VALID_CONCERNS = {
-    "Acne",
-    "Brightening",
-    "Anti-Aging",
-    "Pore-Care",
-    "Moisturizing",
-    "Soothing",
-}
+CSV_PATH = r"C:\Users\shivi\Downloads\glow10\Skin_Care.csv"   # ← update if moved
 
-VALID_BUDGETS = {
-    "Under Rs 100",
-    "Rs 100–200",
-    "Rs 200–500",
-    "Rs 500+",
-}
-
-VALID_MEDIA_TYPES = {
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/gif",
-    "image/webp",
-}
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
 
 class SkinAnalysisRequest(BaseModel):
-    """
-    Sent by the React component (SkinSelfieAnalyzer.jsx).
-
-    image_data   : raw base64 string — NO "data:image/..." prefix
-    media_type   : MIME type of the image
-    budget       : optional budget filter passed through to recommendations
-    top_n        : how many products to return (default 15)
-    """
-    image_data : str
+    image_data : str              # base64 string — NO data:... prefix
     media_type : str = "image/jpeg"
     budget     : Optional[str] = ""
     top_n      : int = 15
+    prompt_tier: str = "standard"  # "minimal" | "standard" | "detailed"
 
     @field_validator("media_type")
     @classmethod
     def check_media_type(cls, v):
         v = v.lower().strip()
-        # normalise "image/jpg" → "image/jpeg"
-        if v == "image/jpg":
-            v = "image/jpeg"
+        if v == "image/jpg": v = "image/jpeg"
         if v not in VALID_MEDIA_TYPES:
-            raise ValueError(f"Unsupported media type '{v}'. Use jpeg, png, gif, or webp.")
+            raise ValueError(f"Unsupported media type '{v}'.")
         return v
 
     @field_validator("image_data")
     @classmethod
     def check_base64(cls, v):
         v = v.strip()
-        # Strip data-URL prefix if the frontend accidentally included it
         if v.startswith("data:"):
-            v = v.split(",", 1)[-1]
-        # Quick sanity check — valid base64 only contains these characters
+            v = v.split(",", 1)[-1]   # strip prefix if frontend sent it
         if not re.fullmatch(r"[A-Za-z0-9+/=\n\r]+", v):
-            raise ValueError("image_data does not appear to be valid base64.")
-        # Verify it actually decodes without error
+            raise ValueError("image_data is not valid base64.")
         try:
             base64.b64decode(v, validate=True)
         except Exception:
-            raise ValueError("image_data is not valid base64-encoded data.")
+            raise ValueError("image_data cannot be decoded as base64.")
         return v
 
     @field_validator("budget")
     @classmethod
     def check_budget(cls, v):
         if v and v not in VALID_BUDGETS:
-            raise ValueError(
-                f"Invalid budget '{v}'. "
-                f"Choose from: {', '.join(sorted(VALID_BUDGETS))}"
-            )
+            raise ValueError(f"Invalid budget. Choose from: {', '.join(sorted(VALID_BUDGETS))}")
         return v or ""
 
     @field_validator("top_n")
     @classmethod
     def check_top_n(cls, v):
-        return max(1, min(v, 50))   # clamp to [1, 50]
+        return max(1, min(v, 50))
 
 
 class SkinAnalysisResult(BaseModel):
-    """Structured result from Claude vision analysis."""
     skin_type  : str
     concerns   : list[str]
     confidence : float
@@ -137,330 +107,242 @@ class SkinAnalysisResult(BaseModel):
 
 
 class SkinAnalysisResponse(BaseModel):
-    """Full response returned to the React frontend."""
-    ok           : bool
-    analysis     : SkinAnalysisResult
-    products     : list[dict]
-    product_count: int
-    model_used   : str
+    ok            : bool
+    analysis      : SkinAnalysisResult
+    products      : list[dict]
+    product_count : int
+    model_used    : str
+    low_confidence: bool = False
+    fallback_used : bool = False
+    warnings      : list[str] = []
 
 
-# ── Claude vision prompt ──────────────────────────────────────────────────────
+# ── Groq client (lazy singleton) ──────────────────────────────────────────────
 
-def build_vision_prompt() -> str:
+_groq_client: openai.OpenAI | None = None
+
+def get_groq_client() -> openai.OpenAI:
+    global _groq_client
+    if _groq_client is None:
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "\n\n❌ GROQ_API_KEY environment variable not set.\n"
+                "   Get your free key at https://console.groq.com\n"
+                "   Then: export GROQ_API_KEY='gsk_...'\n"
+            )
+        _groq_client = openai.OpenAI(
+            api_key  = api_key,
+            base_url = GROQ_BASE_URL,    # point OpenAI SDK at Groq
+        )
+    return _groq_client
+
+
+# ── Parse and validate Groq's JSON response ───────────────────────────────────
+
+def parse_groq_response(raw: str) -> SkinAnalysisResult:
     """
-    Instructs Claude to return structured JSON using EXACTLY the
-    skin_type and concern labels that recommendation_engine.py expects.
-
-    Key design decisions:
-    - Lists the exact allowed values so Claude cannot invent new ones.
-    - Asks for a confidence float so the UI can communicate uncertainty.
-    - Requests a personalised tip as a human-readable string.
-    - Explicitly forbids markdown / extra text so JSON.parse never fails.
+    With Groq JSON mode active, raw should always be valid JSON.
+    We still validate every field to guard against unexpected values.
     """
-    skin_types_str = " | ".join(sorted(VALID_SKIN_TYPES))
-    concerns_str   = ", ".join(sorted(VALID_CONCERNS))
-
-    return f"""You are an expert dermatologist AI analysing a facial selfie to determine skin type and concerns.
-
-Respond with ONLY a valid JSON object — no markdown, no explanation, no extra text before or after.
-
-Required format:
-{{
-  "skin_type": "<exactly one of: {skin_types_str}>",
-  "concerns": ["<concern1>", "<concern2>"],
-  "confidence": <float 0.0–1.0>,
-  "tip": "<one personalised skincare sentence based on what you observe>"
-}}
-
-Valid concerns — pick all that apply, use EXACT spelling:
-{concerns_str}
-
-Analysis rules:
-- skin_type: assess shine, texture, pore size, flakiness, redness. Pick ONE.
-- concerns: based on visible blemishes, uneven tone, fine lines, enlarged pores,
-  dryness patches, redness, dullness. Include only what you can genuinely see.
-- confidence: 0.9+ if face is clear and well-lit; 0.5–0.8 for moderate quality;
-  below 0.5 if face is partially obscured or very low resolution.
-- tip: a single actionable sentence tailored to the detected skin_type and concerns.
-- If the image contains no visible face, return skin_type "Normal",
-  empty concerns, confidence 0.1, and tip "Please upload a clear facial photo."
-
-Return ONLY the JSON object."""
-
-
-# ── Response validation & fallback ───────────────────────────────────────────
-
-def parse_and_validate_claude_response(raw: str) -> SkinAnalysisResult:
-    """
-    Parses Claude's text response and validates every field.
-    Falls back gracefully rather than crashing if Claude drifts
-    from the requested format.
-    """
-    # Strip any accidental markdown fences
-    clean = raw.strip()
-    clean = re.sub(r"^```(?:json)?\s*", "", clean, flags=re.MULTILINE)
-    clean = re.sub(r"\s*```$",          "", clean, flags=re.MULTILINE)
-    clean = clean.strip()
+    clean = raw.strip().lstrip("```json").rstrip("```").strip()
 
     try:
         parsed = json.loads(clean)
     except json.JSONDecodeError as e:
-        logger.error("Claude returned non-JSON: %s", raw[:300])
-        raise ValueError(f"Claude response was not valid JSON: {e}")
+        raise ValueError(f"Groq returned non-JSON: {e}\nRaw: {raw[:200]}")
 
-    # ── skin_type ─────────────────────────────────────────────────────────
-    skin_type = parsed.get("skin_type", "Normal")
-    # Fuzzy match: "combination/oily" → "Combination"
-    skin_type = skin_type.strip().title()
+    # skin_type
+    skin_type = str(parsed.get("skin_type", "Normal")).strip().title()
     if skin_type not in VALID_SKIN_TYPES:
-        for valid in VALID_SKIN_TYPES:
-            if valid.lower() in skin_type.lower():
-                skin_type = valid
-                break
-        else:
-            logger.warning("Unknown skin_type '%s', defaulting to Normal", skin_type)
-            skin_type = "Normal"
-
-    # ── concerns ──────────────────────────────────────────────────────────
-    raw_concerns = parsed.get("concerns", [])
-    if not isinstance(raw_concerns, list):
-        raw_concerns = []
-
-    concerns = []
-    for c in raw_concerns:
-        c_clean = str(c).strip()
-        # Exact match first
-        if c_clean in VALID_CONCERNS:
-            concerns.append(c_clean)
-            continue
-        # Case-insensitive match
-        match = next(
-            (v for v in VALID_CONCERNS if v.lower() == c_clean.lower()), None
+        skin_type = next(
+            (v for v in VALID_SKIN_TYPES if v.lower() in skin_type.lower()),
+            "Normal"
         )
-        if match:
+
+    # concerns — keep only valid values
+    concerns = []
+    for c in (parsed.get("concerns") or []):
+        c = str(c).strip()
+        match = c if c in VALID_CONCERNS else next(
+            (v for v in VALID_CONCERNS if v.lower() == c.lower()), None
+        )
+        if match and match not in concerns:
             concerns.append(match)
-        else:
-            logger.debug("Ignoring unknown concern: %s", c_clean)
 
-    concerns = list(dict.fromkeys(concerns))   # deduplicate, preserve order
-
-    # ── confidence ────────────────────────────────────────────────────────
+    # confidence
     try:
-        confidence = float(parsed.get("confidence", 0.75))
-        confidence = max(0.0, min(1.0, confidence))   # clamp to [0, 1]
+        confidence = max(0.0, min(1.0, float(parsed.get("confidence", 0.75))))
     except (TypeError, ValueError):
         confidence = 0.75
 
-    # ── tip ───────────────────────────────────────────────────────────────
-    tip = str(parsed.get("tip", "")).strip()
-    if not tip:
-        tip = f"Focus on products suited to {skin_type.lower()} skin."
+    # tip
+    tip = str(parsed.get("tip", "")).strip() or f"Use products suited to {skin_type.lower()} skin."
 
     return SkinAnalysisResult(
-        skin_type  = skin_type,
-        concerns   = concerns,
-        confidence = confidence,
-        tip        = tip,
+        skin_type=skin_type, concerns=concerns,
+        confidence=confidence, tip=tip,
     )
 
 
-# ── Anthropic client (lazy singleton) ────────────────────────────────────────
-# Reads ANTHROPIC_API_KEY from the environment automatically.
-# Set it once in your shell:  export ANTHROPIC_API_KEY="sk-ant-..."
-# Or add it to a .env file and load with python-dotenv.
-
-_anthropic_client: anthropic.Anthropic | None = None
-
-def get_anthropic_client() -> anthropic.Anthropic:
-    global _anthropic_client
-    if _anthropic_client is None:
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not api_key:
-            raise RuntimeError(
-                "\n\n❌ ANTHROPIC_API_KEY environment variable not set.\n"
-                "   export ANTHROPIC_API_KEY='sk-ant-...'\n"
-            )
-        _anthropic_client = anthropic.Anthropic(api_key=api_key)
-    return _anthropic_client
-
-
-# ── Endpoint ─────────────────────────────────────────────────────────────────
+# ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @router.post("/api/analyze-skin", response_model=SkinAnalysisResponse)
 async def analyze_skin(body: SkinAnalysisRequest):
     """
-    Accepts a base64-encoded selfie from the React frontend,
-    calls Claude vision to detect skin type and concerns,
-    then returns both the analysis AND filtered product recommendations.
+    POST /api/analyze-skin
 
-    Flow:
-      1. Validate base64 image input
-      2. Send to Claude claude-sonnet-4-20250514 with a structured vision prompt
-      3. Parse and validate Claude's JSON response
-      4. Feed skin_type + concerns + budget into get_filtered_recommendations()
-      5. Return everything in one response — frontend needs zero extra calls
+    Accepts base64 selfie → calls Groq Llama 4 Scout vision →
+    validates JSON → feeds into get_filtered_recommendations() →
+    returns analysis + products in one response.
+
+    FREE — uses Groq free tier (no credit card required).
     """
+    client   = get_groq_client()
+    warnings = []
 
-    # ── 1. Call Claude vision ─────────────────────────────────────────────
-    client = get_anthropic_client()
+    # Build the full data-URL Groq expects
+    data_url = f"data:{body.media_type};base64,{body.image_data}"
 
+    # Get prompts (system + user split for Llama)
+    system_prompt, user_prompt = get_prompt(body.prompt_tier)
+
+    # ── 1. Call Groq vision ────────────────────────────────────────────────
     try:
-        message = client.messages.create(
-            model      = "claude-sonnet-4-20250514",
-            max_tokens = 512,       # JSON response is always short
-            messages   = [
+        response = client.chat.completions.create(
+            model   = GROQ_MODEL,
+            messages = [
+                {
+                    "role"   : "system",
+                    "content": system_prompt,
+                },
                 {
                     "role": "user",
                     "content": [
                         {
-                            "type": "image",
-                            "source": {
-                                "type"      : "base64",
-                                "media_type": body.media_type,
-                                "data"      : body.image_data,
-                            },
+                            "type"     : "image_url",
+                            "image_url": { "url": data_url },   # full data-URL
                         },
                         {
                             "type": "text",
-                            "text": build_vision_prompt(),
+                            "text": user_prompt,
                         },
                     ],
-                }
+                },
             ],
+            response_format = { "type": "json_object" },  # guaranteed JSON back
+            temperature     = 0.1,    # low temp = consistent structured output
+            max_tokens      = 512,
         )
-    except anthropic.AuthenticationError:
+    except openai.AuthenticationError:
+        raise HTTPException(status_code=401, detail="Invalid GROQ_API_KEY.")
+    except openai.RateLimitError:
         raise HTTPException(
-            status_code = 401,
-            detail      = "Invalid Anthropic API key. Check your ANTHROPIC_API_KEY env var."
+            status_code=429,
+            detail="Groq free tier rate limit hit. Wait a moment and try again. "
+                   "Free limit: 30 req/min, 14,400 req/day."
         )
-    except anthropic.RateLimitError:
-        raise HTTPException(
-            status_code = 429,
-            detail      = "Anthropic rate limit hit. Please wait a moment and try again."
-        )
-    except anthropic.BadRequestError as e:
-        # Usually means the image couldn't be decoded
-        raise HTTPException(
-            status_code = 400,
-            detail      = f"Image rejected by Claude API: {str(e)}"
-        )
-    except anthropic.APIError as e:
-        logger.exception("Anthropic API error")
-        raise HTTPException(
-            status_code = 502,
-            detail      = f"Anthropic API error: {str(e)}"
-        )
+    except openai.BadRequestError as e:
+        raise HTTPException(status_code=400, detail=f"Bad request to Groq: {str(e)}")
+    except openai.APIError as e:
+        logger.exception("Groq API error")
+        raise HTTPException(status_code=502, detail=f"Groq API error: {str(e)}")
 
-    # ── 2. Extract text from response ─────────────────────────────────────
-    raw_text = "".join(
-        block.text for block in message.content
-        if hasattr(block, "text")
-    )
+    # ── 2. Parse response ─────────────────────────────────────────────────
+    raw_text = response.choices[0].message.content or ""
 
-    # ── 3. Parse + validate Claude's JSON ─────────────────────────────────
     try:
-        analysis = parse_and_validate_claude_response(raw_text)
+        analysis = parse_groq_response(raw_text)
     except ValueError as e:
-        logger.error("Failed to parse Claude response: %s", raw_text[:300])
-        raise HTTPException(
-            status_code = 422,
-            detail      = f"Could not parse skin analysis: {str(e)}"
+        raise HTTPException(status_code=422, detail=f"Could not parse skin analysis: {e}")
+
+    # Low confidence warning
+    low_confidence = analysis.confidence < 0.45
+    if low_confidence:
+        warnings.append(
+            f"Low confidence ({analysis.confidence:.0%}). "
+            "Ask user to retake in better lighting."
         )
 
-    # ── 4. Get personalised product recommendations ───────────────────────
+    # FIX #7: skin-type fallback map for low-confidence results
+    SKIN_TYPE_FALLBACK = {
+        "Oily":        ["Oily", "Combination"],
+        "Dry":         ["Dry", "Sensitive"],
+        "Combination": ["Combination", "Oily", "Normal"],
+        "Sensitive":   ["Sensitive", "Dry"],
+        "Normal":      ["Normal", "Combination"],
+    }
+
+    # ── 3. Get product recommendations ────────────────────────────────────
+    fallback_used = False
     try:
-        CSV_PATH = r"C:\Users\shivi\Downloads\glow12.0\Skin_Care.csv"
+        import pandas as _pd
         df = load_data(CSV_PATH)
 
-        recs_df = get_filtered_recommendations(
-            df         = df,
-            skin_type  = analysis.skin_type,
-            concerns   = analysis.concerns,
-            budget     = body.budget,
-            top_n      = body.top_n,
-        )
-        products = recs_df.to_dict("records")
+        confidence = analysis.confidence
+        primary_st = analysis.skin_type
+
+        if confidence < 0.45:
+            candidate_types = SKIN_TYPE_FALLBACK.get(primary_st, [primary_st])
+            frames = [
+                get_filtered_recommendations(
+                    df=df, skin_type=st, concerns=analysis.concerns,
+                    budget=body.budget, top_n=body.top_n * 2,
+                )
+                for st in candidate_types
+            ]
+            products_df = (
+                _pd.concat(frames)
+                   .drop_duplicates("product_id")
+                   .sort_values("match_score", ascending=False)
+                   .head(body.top_n)
+                   .reset_index(drop=True)
+            )
+            warnings.append(
+                f"Low confidence ({confidence:.0%}). Showing results for "
+                f"{' and '.join(candidate_types)} skin types. "
+                "Retake selfie in bright, even lighting for better accuracy."
+            )
+        elif confidence >= 0.85:
+            products_df = get_filtered_recommendations(
+                df=df, skin_type=primary_st, concerns=analysis.concerns,
+                budget=body.budget, top_n=body.top_n,
+            )
+            products_df = products_df[products_df["match_score"] > 0].reset_index(drop=True)
+        else:
+            products_df = get_filtered_recommendations(
+                df=df, skin_type=primary_st, concerns=analysis.concerns,
+                budget=body.budget, top_n=body.top_n,
+            )
+
+        # FIX #6: surface budget-relaxed flag from engine
+        if "_budget_relaxed" in products_df.columns and products_df["_budget_relaxed"].any():
+            fallback_used = True
+            warnings.append(
+                f"Fewer than 3 products found under '{body.budget}'. "
+                "Showing closest alternatives."
+            )
+
+        skip_cols = {"_budget_relaxed"}
+        products = [
+            {k: (float(v) if hasattr(v, "item") else v)
+             for k, v in row.items()
+             if k not in skip_cols and v is not None and str(v) != "nan"}
+            for row in products_df.to_dict("records")
+        ]
 
     except Exception as e:
         logger.exception("Recommendation engine error")
-        # Don't fail the whole request — return the analysis with empty products
-        logger.warning("Returning analysis without products due to error: %s", e)
         products = []
+        warnings.append(f"Could not load products: {str(e)}")
 
-    # ── 5. Return combined response ───────────────────────────────────────
     return SkinAnalysisResponse(
         ok            = True,
         analysis      = analysis,
         products      = products,
         product_count = len(products),
-        model_used    = message.model,
+        model_used    = response.model,
+        low_confidence = low_confidence,
+        fallback_used = fallback_used,
+        warnings      = warnings,
     )
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# HOW TO ADD THIS ROUTER TO YOUR EXISTING server.py
-# ─────────────────────────────────────────────────────────────────────────────
-#
-# Open server.py and add two lines:
-#
-#   # Near the top, after your existing imports:
-#   from skin_analysis_endpoint import router as skin_router
-#
-#   # Right after `app = FastAPI(...)`:
-#   app.include_router(skin_router)
-#
-# That's it. Restart the server and the endpoint is live at:
-#   POST http://localhost:8000/api/analyze-skin
-#
-# ─────────────────────────────────────────────────────────────────────────────
-# ENVIRONMENT SETUP
-# ─────────────────────────────────────────────────────────────────────────────
-#
-#   pip install anthropic
-#
-#   # Windows (PowerShell):
-#   $env:ANTHROPIC_API_KEY = "sk-ant-..."
-#
-#   # Windows (Command Prompt):
-#   set ANTHROPIC_API_KEY=sk-ant-...
-#
-#   # Or create a .env file in glow10/ with:
-#   # ANTHROPIC_API_KEY=sk-ant-...
-#   # Then add to server.py:  from dotenv import load_dotenv; load_dotenv()
-#
-# ─────────────────────────────────────────────────────────────────────────────
-# MANUAL TEST (curl)
-# ─────────────────────────────────────────────────────────────────────────────
-#
-# Linux/Mac:
-#   B64=$(base64 -i /path/to/selfie.jpg | tr -d '\n')
-#   curl -X POST http://localhost:8000/api/analyze-skin \
-#        -H "Content-Type: application/json" \
-#        -d "{\"image_data\":\"$B64\",\"media_type\":\"image/jpeg\",\"budget\":\"Under Rs 100\"}"
-#
-# Windows PowerShell:
-#   $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\path\to\selfie.jpg"))
-#   Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/analyze-skin `
-#     -ContentType "application/json" `
-#     -Body "{`"image_data`":`"$b64`",`"media_type`":`"image/jpeg`",`"budget`":`"Under Rs 100`"}"
-#
-# ─────────────────────────────────────────────────────────────────────────────
-# EXAMPLE RESPONSE
-# ─────────────────────────────────────────────────────────────────────────────
-#
-# {
-#   "ok": true,
-#   "analysis": {
-#     "skin_type":  "Oily",
-#     "concerns":   ["Acne", "Pore-Care"],
-#     "confidence": 0.88,
-#     "tip": "Look for oil-free, non-comedogenic products with niacinamide to control shine and minimise pores."
-#   },
-#   "products": [
-#     { "product_name": "ACWELL Bubble Free PH Balancing Cleanser", "brand": "ACWELL", "price_display": "Rs 209.00", ... },
-#     ...
-#   ],
-#   "product_count": 12,
-#   "model_used": "claude-sonnet-4-20250514"
-# }

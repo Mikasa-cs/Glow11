@@ -1,145 +1,107 @@
-# skin_vision_prompt.py
-# ─────────────────────────────────────────────────────────────────────────────
-# Claude vision prompts for skin analysis.
-#
-# Three prompt tiers — pick based on what your UI needs:
-#
-#   build_prompt_minimal()   → skin_type + concerns only  (fastest, cheapest)
-#   build_prompt_standard()  → + confidence + tip         (recommended, used in endpoint)
-#   build_prompt_detailed()  → + routine + ingredients    (for a premium "full report" flow)
-#
-# All prompts are engineered to return EXACT values that plug into
-# recommendation_engine.py without any mapping or translation.
-# ─────────────────────────────────────────────────────────────────────────────
 
-# ── Valid values — must match recommendation_engine.py exactly ────────────────
 
 VALID_SKIN_TYPES = ["Oily", "Dry", "Combination", "Sensitive", "Normal"]
 
 VALID_CONCERNS = [
-    "Acne",
-    "Brightening",
-    "Anti-Aging",
-    "Pore-Care",
-    "Moisturizing",
-    "Soothing",
+    "Acne", "Brightening", "Anti-Aging",
+    "Pore-Care", "Moisturizing", "Soothing",
 ]
 
-VALID_BUDGETS = ["Under Rs 100", "Rs 100–200", "Rs 200–500", "Rs 500+"]
+GROQ_MODEL    = "meta-llama/llama-4-scout-17b-16e-instruct"
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PROMPT TIER 1 — Minimal
-# Use when: you only need to feed skin_type + concerns into the engine.
-# Output tokens: ~60
-# ─────────────────────────────────────────────────────────────────────────────
-
-def build_prompt_minimal() -> str:
+def build_prompt_standard() -> tuple[str, str]:
     """
-    Smallest possible prompt. Returns only the two fields
-    get_filtered_recommendations() needs. Use this if speed or
-    token cost is your priority.
-    """
-    skin_types = " | ".join(VALID_SKIN_TYPES)
-    concerns   = " | ".join(VALID_CONCERNS)
+    Recommended default. Returns (system_prompt, user_prompt).
+    Pass system_prompt as role:system and user_prompt as role:user.
 
-    return f"""Analyse this facial selfie. Return ONLY a JSON object, no other text.
-
-{{
-  "skin_type": "<{skin_types}>",
-  "concerns":  ["<pick from: {concerns}>"]
-}}
-
-Choose ONE skin_type. Include all concerns you can visibly detect."""
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PROMPT TIER 2 — Standard  ← recommended default
-# Use when: you want confidence + a personalised tip for the UI.
-# Output tokens: ~120
-# ─────────────────────────────────────────────────────────────────────────────
-
-def build_prompt_standard() -> str:
-    """
-    The recommended prompt. Adds confidence (so the UI can show
-    "88% confident") and a tip (the one human-readable sentence
-    shown below the analysis result card).
-
-    Every field maps directly to SkinAnalysisResult in
-    skin_analysis_endpoint.py.
-    """
-    skin_types = " | ".join(VALID_SKIN_TYPES)
-    concerns   = ", ".join(VALID_CONCERNS)
-
-    return f"""You are an expert dermatologist AI. Analyse this facial selfie.
-
-Return ONLY a valid JSON object — no markdown fences, no explanation, nothing else.
-
-{{
-  "skin_type":  "<exactly one of: {skin_types}>",
-  "concerns":   ["<concern1>", "<concern2>"],
-  "confidence": <float 0.0–1.0>,
-  "tip":        "<one personalised skincare sentence>"
-}}
-
-CONCERNS — valid values only, exact spelling, include all you can see:
-{concerns}
-
-SKIN TYPE rules:
-- Oily        → visible shine, enlarged pores, thick texture
-- Dry         → flakiness, tightness, dull or rough patches
-- Combination → oily T-zone (forehead/nose/chin), dry cheeks
-- Sensitive   → redness, visible capillaries, reactive-looking skin
-- Normal      → balanced, even tone, no obvious texture issues
-
-CONFIDENCE rules:
-- 0.85–1.0  → face clearly visible, good even lighting
-- 0.60–0.84 → acceptable lighting, minor obstructions
-- 0.40–0.59 → low light, heavy filter, partially obscured
-- 0.10–0.39 → face barely visible; still return best guess
-
-TIP rules:
-- One sentence only
-- Specific to the detected skin_type and concerns
-- Actionable (name an ingredient or routine step)
-- No brand names
-
-If no face is visible: skin_type "Normal", empty concerns array,
-confidence 0.1, tip "Please upload a clear, well-lit facial photo."
-
-Return ONLY the JSON object."""
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PROMPT TIER 3 — Detailed  (premium "full report" flow)
-# Use when: generating the PDF skin report or a dedicated skin quiz page.
-# Output tokens: ~250
-# ─────────────────────────────────────────────────────────────────────────────
-
-def build_prompt_detailed() -> str:
-    """
-    Returns everything in Tier 2 plus:
-      - routine_steps: ordered AM/PM routine suggestions
-      - key_ingredients: 3 hero ingredients to look for
-      - avoid_ingredients: ingredients to avoid for this skin type
-
-    These extra fields power the "Your Routine" section of the PDF report
-    but are ignored by get_filtered_recommendations() — that function only
-    reads skin_type, concerns, and budget.
+    Because Groq JSON mode is active, the model is guaranteed to
+    return valid JSON — no need for "return ONLY JSON" defensiveness.
     """
     skin_types   = " | ".join(VALID_SKIN_TYPES)
     concerns_str = ", ".join(VALID_CONCERNS)
 
-    return f"""You are an expert dermatologist AI conducting a full skin consultation
-from a facial selfie.
+    system = (
+        "You are an expert dermatologist AI. "
+        "You analyse facial selfies and return structured skin analysis data. "
+        "Always respond in JSON format only."
+    )
 
-Return ONLY a valid JSON object — no markdown, no explanation, nothing else.
+    user = f"""Analyse this facial selfie and detect the person's skin type and concerns.
+
+Return a JSON object with these exact fields:
 
 {{
-  "skin_type": "<exactly one of: {skin_types}>",
-  "concerns":  ["<concern1>", "<concern2>"],
+  "skin_type":  "<one of: {skin_types}>",
+  "concerns":   ["<from valid list below>"],
+  "confidence": <float 0.0 to 1.0>,
+  "tip":        "<one personalised skincare sentence>"
+}}
+
+VALID CONCERNS (use exact spelling, include all you can see):
+{concerns_str}
+
+SKIN TYPE decision rules:
+- Oily:        visible shine, enlarged pores, thick or greasy texture
+- Dry:         flakiness, rough patches, tight or dull appearance
+- Combination: oily T-zone (forehead, nose, chin) with dry or normal cheeks
+- Sensitive:   redness, visible capillaries, blotchy or reactive skin
+- Normal:      balanced, even tone, no obvious texture problems
+
+CONFIDENCE scale:
+- 0.85–1.0  face clearly visible, good even lighting
+- 0.60–0.84 minor issues (soft focus, slight shadow)
+- 0.40–0.59 noticeable quality problems
+- 0.10–0.39 face barely visible — return best guess anyway
+
+TIP rules:
+- One sentence only, actionable, name a specific ingredient or step
+- No brand names
+
+If no face is visible: skin_type "Normal", concerns [], confidence 0.1,
+tip "Please upload a clear, well-lit facial photo."
+"""
+    return system, user
+
+
+def build_prompt_minimal() -> tuple[str, str]:
+    """Fastest / cheapest. Returns only skin_type and concerns."""
+    skin_types   = " | ".join(VALID_SKIN_TYPES)
+    concerns_str = " | ".join(VALID_CONCERNS)
+
+    system = "You are a dermatologist AI. Respond in JSON only."
+    user   = f"""Analyse this selfie.
+
+Return JSON:
+{{
+  "skin_type": "<{skin_types}>",
+  "concerns":  ["<from: {concerns_str}>"]
+}}
+
+Choose ONE skin_type. List all concerns you can visibly detect."""
+    return system, user
+
+
+def build_prompt_detailed() -> tuple[str, str]:
+    """
+    Full skin report. Adds routine_steps, key_ingredients, avoid_ingredients.
+    Use for the PDF report page.
+    """
+    skin_types   = " | ".join(VALID_SKIN_TYPES)
+    concerns_str = ", ".join(VALID_CONCERNS)
+
+    system = (
+        "You are an expert dermatologist AI conducting a full skin consultation. "
+        "Respond in JSON only."
+    )
+    user = f"""Analyse this facial selfie for a full skin consultation report.
+
+Return JSON:
+{{
+  "skin_type":  "<one of: {skin_types}>",
+  "concerns":   ["<from valid list>"],
   "confidence": <float 0.0–1.0>,
-  "tip": "<one personalised sentence>",
+  "tip":        "<one personalised sentence>",
   "routine_steps": {{
     "AM": ["<step1>", "<step2>", "<step3>"],
     "PM": ["<step1>", "<step2>", "<step3>"]
@@ -148,47 +110,25 @@ Return ONLY a valid JSON object — no markdown, no explanation, nothing else.
   "avoid_ingredients": ["<ingredient1>", "<ingredient2>"]
 }}
 
-CONCERNS — valid values, exact spelling, include ALL you can observe:
-{concerns_str}
+VALID CONCERNS: {concerns_str}
 
-SKIN TYPE — pick the single best match:
-- Oily:        shine, enlarged pores, thick/greasy texture
-- Dry:         flakiness, rough patches, tight appearance, dullness
-- Combination: oily T-zone + dry/normal cheeks
-- Sensitive:   redness, blotchiness, visible capillaries, uneven tone
-- Normal:      balanced, no obvious issues
+SKIN TYPE rules: Oily=shine+pores, Dry=flaky+tight, Combination=oily-T+dry-cheeks,
+Sensitive=redness+reactive, Normal=balanced.
 
-CONFIDENCE — based on image quality:
-0.85–1.0  clear face, even lighting, no filters
-0.60–0.84 minor issues (slight shadow, soft focus)
-0.40–0.59 noticeable quality problems
-0.10–0.39 face barely visible
+ROUTINE: 3 steps per period in application order.
+AM always ends with SPF. PM always ends with moisturiser.
+KEY INGREDIENTS: 3 hero actives for detected skin profile.
+AVOID INGREDIENTS: 2 ingredients likely to aggravate detected concerns.
 
-ROUTINE STEPS — 3 steps per period, in application order:
-  AM: cleanser → treatment → SPF (always end AM with SPF)
-  PM: cleanser → treatment → moisturiser
-
-KEY INGREDIENTS — 3 hero actives most beneficial for the detected profile.
-AVOID INGREDIENTS — 2 ingredients likely to aggravate detected concerns.
-
-TIP — one sentence, actionable, ingredient-specific, no brand names.
-
-If no face is visible: skin_type "Normal", concerns [], confidence 0.1,
-tip "Please upload a clear photo", minimal routine and ingredient lists.
-
-Return ONLY the JSON object."""
+If no face visible: skin_type Normal, empty concerns, confidence 0.1.
+"""
+    return system, user
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Prompt selector — convenience function used by the endpoint
-# ─────────────────────────────────────────────────────────────────────────────
-
-def get_prompt(tier: str = "standard") -> str:
+def get_prompt(tier: str = "standard") -> tuple[str, str]:
     """
-    Returns the prompt for the given tier.
-
-    tier options: "minimal" | "standard" | "detailed"
-    Defaults to "standard" for unknown values.
+    Returns (system_prompt, user_prompt) for the given tier.
+    tier: "minimal" | "standard" | "detailed"
     """
     return {
         "minimal":  build_prompt_minimal,
@@ -197,30 +137,12 @@ def get_prompt(tier: str = "standard") -> str:
     }.get(tier, build_prompt_standard)()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Prompt testing utility
-# Run:  python skin_vision_prompt.py
-# Prints all three prompts with token estimates so you can compare them.
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _estimate_tokens(text: str) -> int:
-    """Rough estimate: ~4 chars per token for English prose."""
-    return len(text) // 4
-
-
 if __name__ == "__main__":
-    tiers = [
-        ("minimal",  build_prompt_minimal()),
-        ("standard", build_prompt_standard()),
-        ("detailed", build_prompt_detailed()),
-    ]
-
-    for name, prompt in tiers:
-        tokens = _estimate_tokens(prompt)
-        print(f"\n{'─' * 60}")
-        print(f"  TIER: {name.upper()}   (~{tokens} input tokens)")
-        print(f"{'─' * 60}")
-        print(prompt)
-
-    print("\n\n✅ All prompts rendered. Paste into Claude playground to test.")
-    print("   https://console.anthropic.com/workbench")
+    for tier in ["minimal", "standard", "detailed"]:
+        sys_p, usr_p = get_prompt(tier)
+        print(f"\n{'─'*55}")
+        print(f"  TIER: {tier.upper()}")
+        print(f"{'─'*55}")
+        print(f"[SYSTEM]\n{sys_p}\n")
+        print(f"[USER]\n{usr_p}")
+    print("\n✅ All prompts rendered.")
